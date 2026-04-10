@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Movimento">
+<title>O Meu Movimento</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0f1117;--surface:#1a1d27;--surface2:#22263a;--accent:#7ee8a2;--accent2:#56cfe1;--warn:#ff9f43;--danger:#ff6b6b;--text:#e8eaf0;--muted:#6b7280;--border:rgba(255,255,255,0.07)}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;padding:0 0 40px;background-image:radial-gradient(ellipse at 20% 10%,rgba(126,232,162,.05) 0%,transparent 50%),radial-gradient(ellipse at 80% 80%,rgba(86,207,225,.04) 0%,transparent 50%)}
+header{padding:max(env(safe-area-inset-top),28px) 20px 16px;border-bottom:1px solid var(--border);background:rgba(15,17,23,.95);backdrop-filter:blur(10px);position:sticky;top:0;z-index:100}
+header h1{font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:600;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+header p{font-size:.78rem;color:var(--muted);margin-top:2px}
+.date-nav{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;background:var(--surface);border-bottom:1px solid var(--border)}
+.date-nav button{background:none;border:1px solid var(--border);color:var(--muted);width:36px;height:36px;border-radius:50%;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.date-nav button:active{border-color:var(--accent);color:var(--accent)}
+.date-label{font-family:'Playfair Display',serif;font-size:1rem;font-weight:600;text-align:center}
+.date-label span{display:block;font-family:'DM Sans',sans-serif;font-size:.7rem;color:var(--muted);font-weight:300;margin-top:1px;text-transform:uppercase;letter-spacing:.08em}
+.progress-bar-wrap{padding:14px 20px 0}
+.progress-bar-top{display:flex;justify-content:space-between;font-size:.75rem;color:var(--muted);margin-bottom:6px}
+.progress-bar-top strong{color:var(--accent)}
+.bar{height:6px;background:var(--surface2);border-radius:99px;overflow:hidden}
+.bar-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:99px;transition:width .5s}
+.section-title{font-size:.68rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);padding:16px 20px 8px}
+.stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:0 12px}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 10px;text-align:center}
+.stat-num{font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:700;line-height:1}
+.stat-num.green{color:var(--accent)}.stat-num.blue{color:var(--accent2)}.stat-num.orange{color:var(--warn)}
+.stat-label{font-size:.63rem;color:var(--muted);margin-top:4px;text-transform:uppercase;letter-spacing:.06em}
+.exercise-list{padding:0 12px;display:flex;flex-direction:column;gap:8px}
+.exercise-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:13px 14px;display:flex;align-items:center;gap:12px;position:relative;overflow:hidden;transition:all .2s}
+.exercise-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--muted);border-radius:3px 0 0 3px;transition:background .2s}
+.exercise-card.done{background:rgba(126,232,162,.06);border-color:rgba(126,232,162,.2)}
+.exercise-card.done::before{background:var(--accent)}
+.exercise-card.skipped{background:rgba(255,107,107,.05);border-color:rgba(255,107,107,.15)}
+.exercise-card.skipped::before{background:var(--danger)}
+.exercise-card:active{transform:scale(.98)}
+.check-circle{width:28px;height:28px;border-radius:50%;border:2px solid var(--muted);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.85rem;transition:all .2s;color:transparent}
+.exercise-card.done .check-circle{background:var(--accent);border-color:var(--accent);color:#0f1117}
+.exercise-card.skipped .check-circle{background:var(--danger);border-color:var(--danger);color:#fff}
+.ex-info{flex:1;min-width:0}
+.ex-time{font-size:.67rem;color:var(--accent2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px}
+.ex-name{font-size:.9rem;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.exercise-card.done .ex-name{color:var(--accent)}
+.exercise-card.skipped .ex-name{color:var(--muted);text-decoration:line-through}
+.ex-desc{font-size:.73rem;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ex-actions{display:flex;gap:5px;flex-shrink:0}
+.btn-small{background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:.68rem;padding:6px 10px;cursor:pointer;transition:all .15s;font-family:'DM Sans',sans-serif;font-weight:500}
+.btn-small.active-done{background:rgba(126,232,162,.15);border-color:var(--accent);color:var(--accent)}
+.btn-small.active-skip{background:rgba(255,107,107,.12);border-color:var(--danger);color:var(--danger)}
+.missed-section{margin:10px 12px 0;background:rgba(255,159,67,.07);border:1px solid rgba(255,159,67,.2);border-radius:14px;overflow:hidden}
+.missed-header{padding:12px 16px;display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none}
+.missed-header h3{font-size:.85rem;font-weight:500;color:var(--warn);flex:1}
+.missed-header .count{background:var(--warn);color:#0f1117;font-size:.68rem;font-weight:700;border-radius:99px;padding:1px 8px}
+.missed-header .chevron{color:var(--muted);transition:transform .2s;font-size:.8rem}
+.missed-header.open .chevron{transform:rotate(180deg)}
+.missed-list{display:none;padding:0 16px 12px;flex-direction:column;gap:8px}
+.missed-list.open{display:flex}
+.missed-item{background:var(--surface);border-radius:10px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.missed-item-info{flex:1;min-width:0}
+.missed-item-date{font-size:.67rem;color:var(--warn);margin-bottom:1px}
+.missed-item-name{font-size:.82rem;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.btn-done-now{background:rgba(126,232,162,.12);border:1px solid var(--accent);color:var(--accent);font-size:.67rem;padding:5px 10px;border-radius:7px;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:500;white-space:nowrap;flex-shrink:0}
+.rest-day{margin:0;background:rgba(86,207,225,.06);border:1px solid rgba(86,207,225,.15);border-radius:14px;padding:28px 20px;text-align:center}
+.rest-day h3{font-family:'Playfair Display',serif;color:var(--accent2);font-size:1.1rem}
+.rest-day p{font-size:.78rem;color:var(--muted);margin-top:4px}
+.toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--surface2);border:1px solid var(--accent);color:var(--accent);padding:10px 22px;border-radius:99px;font-size:.82rem;font-weight:500;opacity:0;transition:all .3s;pointer-events:none;z-index:999;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+<header>
+  <h1>O Meu Movimento</h1>
+  <p id="greeting">Carregando...</p>
+</header>
+<div class="date-nav">
+  <button onclick="changeDay(-1)">←</button>
+  <div class="date-label" id="dateLabel">—<span id="dayName">—</span></div>
+  <button onclick="changeDay(1)">→</button>
+</div>
+<div class="progress-bar-wrap">
+  <div class="progress-bar-top"><span>Progresso de hoje</span><strong id="progressText">0 / 0</strong></div>
+  <div class="bar"><div class="bar-fill" id="barFill" style="width:0%"></div></div>
+</div>
+<div class="section-title">ESTA SEMANA</div>
+<div class="stats-grid">
+  <div class="stat-card"><div class="stat-num green" id="statDone">0</div><div class="stat-label">Feitos</div></div>
+  <div class="stat-card"><div class="stat-num orange" id="statMissed">0</div><div class="stat-label">Em falta</div></div>
+  <div class="stat-card"><div class="stat-num blue" id="statStreak">0</div><div class="stat-label">Dias seguidos</div></div>
+</div>
+<div id="missedContainer"></div>
+<div class="section-title" id="todayLabel">EXERCICIOS DE HOJE</div>
+<div class="exercise-list" id="exerciseList"></div>
+<div class="toast" id="toast"></div>
+<script>
+const PLAN={1:[{time:'07:20',name:'Mobilidade antes de sair',desc:'Ombros, pescoco, tornozelos - 5 min'},{time:'13:00',name:'Caminhada no almoco',desc:'15 min a ritmo confortavel'},{time:'15:30',name:'Exercicios na cadeira',desc:'Calcanhares, gluteos, pescoco - 3 min'},{time:'20:00',name:'Resistencia leve',desc:'Bandas ou garrafas de agua - 10 min'},{time:'21:15',name:'Alongamentos',desc:'Antes de dormir - 5 min'}],2:[{time:'07:20',name:'Mobilidade antes de sair',desc:'Ombros, pescoco, tornozelos - 5 min'},{time:'13:00',name:'Caminhada no almoco',desc:'15 min a ritmo confortavel'},{time:'15:30',name:'Exercicios na cadeira',desc:'Calcanhares, gluteos, pescoco - 3 min'},{time:'20:00',name:'Resistencia leve',desc:'Bandas ou garrafas de agua - 10 min'},{time:'21:15',name:'Alongamentos',desc:'Antes de dormir - 5 min'}],3:[{time:'08:30',name:'Qigong manha',desc:'YOQI no YouTube - 10 min'},{time:'11:00',name:'Pausa activa manha',desc:'Tai Chi for Health - 10 min'},{time:'20:00',name:'Resistencia leve',desc:'Bandas ou garrafas de agua - 10 min'},{time:'21:15',name:'Alongamentos',desc:'Antes de dormir - 5 min'}],4:[{time:'07:20',name:'Mobilidade antes de sair',desc:'Ombros, pescoco, tornozelos - 5 min'},{time:'13:00',name:'Caminhada no almoco',desc:'15 min a ritmo confortavel'},{time:'15:30',name:'Exercicios na cadeira',desc:'Calcanhares, gluteos, pescoco - 3 min'},{time:'20:00',name:'Resistencia leve',desc:'Bandas ou garrafas de agua - 10 min'},{time:'21:15',name:'Alongamentos',desc:'Antes de dormir - 5 min'}],5:[{time:'08:30',name:'Qigong manha',desc:'YOQI no YouTube - 10 min'},{time:'11:00',name:'Pausa activa manha',desc:'Tai Chi for Health - 10 min'},{time:'20:00',name:'Resistencia leve',desc:'Bandas ou garrafas de agua - 10 min'},{time:'21:15',name:'Alongamentos',desc:'Antes de dormir - 5 min'}],6:[{time:'10:00',name:'Movimento suave',desc:'Qigong ou caminhada - flexivel'}],0:[{time:'10:00',name:'Movimento suave',desc:'Qigong ou caminhada - flexivel'}]};
+const DAYS=['Domingo','Segunda-feira','Terca-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sabado'];
+const MONTHS=['Janeiro','Fevereiro','Marco','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+let cur=new Date();cur.setHours(0,0,0,0);
+function dk(d){return d.toISOString().slice(0,10)}
+function fd(d){return d.getDate()+' de '+MONTHS[d.getMonth()]}
+function ls(){try{return JSON.parse(localStorage.getItem('movState')||'{}')}catch{return{}}}
+function ss(s){localStorage.setItem('movState',JSON.stringify(s))}
+function render(){
+  const state=ls(),key=dk(cur),dow=cur.getDay(),exs=PLAN[dow]||[];
+  const today=new Date();today.setHours(0,0,0,0);
+  const isToday=key===dk(today),isFuture=cur>today;
+  const h=new Date().getHours();
+  document.getElementById('greeting').textContent=h<12?'Bom dia! Vamos mover o corpo':h<18?'Boa tarde! Ja fizeste os exercicios?':'Boa noite! Nao te esquecas dos alongamentos';
+  document.getElementById('dateLabel').innerHTML=fd(cur)+'<span>'+DAYS[dow]+(isToday?' - Hoje':'')+'</span>';
+  const ds=state[key]||{},list=document.getElementById('exerciseList');
+  document.getElementById('todayLabel').textContent=isFuture?'EXERCICIOS PREVISTOS':isToday?'EXERCICIOS DE HOJE':'EXERCICIOS DESTE DIA';
+  if(!exs.length){list.innerHTML='<div class="rest-day"><h3>Dia de Descanso</h3><p>Recupera e prepara-te para amanha</p></div>'}
+  else{list.innerHTML=exs.map((ex,i)=>{const s=ds[i]||'none',d=s==='done',sk=s==='skip';return'<div class="exercise-card '+(d?'done':sk?'skipped':'')+'"><div class="check-circle">'+(d?'✓':sk?'✕':'')+'</div><div class="ex-info"><div class="ex-time">'+ex.time+'</div><div class="ex-name">'+ex.name+'</div><div class="ex-desc">'+ex.desc+'</div></div><div class="ex-actions"><button class="btn-small '+(d?'active-done':'')+'" onclick="mark(\''+key+'\','+i+',\'done\')">✓ Feito</button><button class="btn-small '+(sk?'active-skip':'')+'" onclick="mark(\''+key+'\','+i+',\'skip\')">✕ Skip</button></div></div>'}).join('')}
+  const done=exs.filter((_,i)=>(ds[i]||'none')==='done').length,total=exs.length;
+  document.getElementById('progressText').textContent=done+' / '+total;
+  document.getElementById('barFill').style.width=total?Math.round(done/total*100)+'%':'0%';
+  let td=0,tm=0;
+  for(let i=0;i<7;i++){const d=new Date(today);d.setDate(d.getDate()-i);const k=dk(d),dss=state[k]||{};(PLAN[d.getDay()]||[]).forEach((_,idx)=>{if((dss[idx]||'none')==='done')td++;else if(d<today&&(dss[idx]||'none')==='none')tm++})}
+  let streak=0;
+  for(let i=0;i<30;i++){const d=new Date(today);d.setDate(d.getDate()-i);if(d>today)continue;const k=dk(d),dss=state[k]||{};if((PLAN[d.getDay()]||[]).some((_,idx)=>(dss[idx]||'none')==='done'))streak++;else if(i>0)break}
+  document.getElementById('statDone').textContent=td;document.getElementById('statMissed').textContent=tm;document.getElementById('statStreak').textContent=streak;
+  const mc=document.getElementById('missedContainer'),missed=[];
+  for(let i=1;i<=14;i++){const d=new Date(today);d.setDate(d.getDate()-i);const k=dk(d),dss=state[k]||{};(PLAN[d.getDay()]||[]).forEach((ex,idx)=>{if((dss[idx]||'none')==='none')missed.push({key:k,idx,name:ex.name,date:fd(d),dayName:DAYS[d.getDay()]})})}
+  if(!missed.length){mc.innerHTML='';return}
+  const wo=mc.querySelector('.missed-header.open')!=null;
+  mc.innerHTML='<div class="missed-section"><div class="missed-header '+(wo?'open':'')+'" onclick="toggleMissed(this)"><span style="font-size:1rem">⚠️</span><h3>Exercicios em falta</h3><span class="count">'+missed.length+'</span><span class="chevron">▼</span></div><div class="missed-list '+(wo?'open':'')+'">'+missed.map(m=>'<div class="missed-item"><div class="missed-item-info"><div class="missed-item-date">'+m.dayName+', '+m.date+'</div><div class="missed-item-name">'+m.name+'</div></div><button class="btn-done-now" onclick="markMissed(\''+m.key+'\','+m.idx+')">Fiz agora ✓</button></div>').join('')+'</div></div>'
+}
+function toggleMissed(el){el.classList.toggle('open');el.nextElementSibling.classList.toggle('open')}
+function mark(key,idx,status){const s=ls();if(!s[key])s[key]={};s[key][idx]=s[key][idx]===status?'none':status;ss(s);toast(s[key][idx]==='done'?'Exercicio feito!':s[key][idx]==='skip'?'Registado como skip':'Marcacao removida');render()}
+function markMissed(key,idx){const s=ls();if(!s[key])s[key]={};s[key][idx]='done';ss(s);toast('Exercicio recuperado!');render()}
+function changeDay(d){cur.setDate(cur.getDate()+d);const t=new Date();t.setHours(0,0,0,0);if(cur>t)cur=new Date(t);render()}
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200)}
+render();
+</script>
+</body>
+</html>
