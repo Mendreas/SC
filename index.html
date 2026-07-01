@@ -1,0 +1,1805 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Energia · Sublinha Conta</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  :root {
+    --verde: #6b2737;
+    --verde-claro: #8c3a4a;
+    --verde-pale: #f5eaec;
+    --solar: #5a5a5a;
+    --solar-pale: #efefef;
+    --rede: #2c5f8a;
+    --rede-pale: #e8f0f7;
+    --custo: #8c3a4a;
+    --bateria: #4a4a7a;
+    --bg: #f3f3f3;
+    --card: #ffffff;
+    --texto: #1a1a1a;
+    --texto-sec: #5a5a5a;
+    --borda: #dedede;
+    --radius: 12px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--texto); min-height: 100vh; }
+
+  header {
+    background: linear-gradient(135deg, #4a1826 0%, #6b2737 60%, #7d3045 100%);
+    color: white;
+    padding: 18px 28px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.25);
+  }
+  header svg { flex-shrink: 0; }
+  header h1 { font-size: 1.25rem; font-weight: 600; letter-spacing: -0.02em; }
+  header p { font-size: 0.8rem; opacity: 0.75; margin-top: 2px; }
+
+  .container { max-width: 1100px; margin: 0 auto; padding: 24px 16px; }
+
+  /* Upload zone */
+  .upload-section {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+  @media(max-width:640px){ .upload-section { grid-template-columns: 1fr; } }
+
+  .drop-zone {
+    border: 2px dashed var(--borda);
+    border-radius: var(--radius);
+    background: var(--card);
+    padding: 22px 18px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .2s, background .2s;
+    position: relative;
+  }
+  .drop-zone:hover, .drop-zone.drag { border-color: var(--verde-claro); background: var(--verde-pale); }
+  .drop-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+  .drop-zone .icon { font-size: 2rem; margin-bottom: 8px; display: block; }
+  .drop-zone h3 { font-size: .9rem; font-weight: 600; color: var(--texto); margin-bottom: 4px; }
+  .drop-zone p { font-size: .78rem; color: var(--texto-sec); }
+  .drop-zone .badge {
+    display: inline-block; margin-top: 10px; background: var(--verde-claro);
+    color: white; border-radius: 20px; padding: 2px 10px; font-size: .72rem; font-weight: 600;
+  }
+  .badge-solar { background: var(--solar) !important; }
+
+  /* Mensagens */
+  #msgs { margin-bottom: 16px; }
+  .msg {
+    padding: 9px 14px; border-radius: 8px; font-size: .82rem; margin-bottom: 6px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .msg.ok { background: var(--verde-pale); color: var(--verde); }
+  .msg.err { background: #fdecea; color: var(--custo); }
+  .msg.info { background: var(--rede-pale); color: var(--rede); }
+
+  /* KPI cards */
+  .kpis {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 14px;
+    margin-bottom: 28px;
+  }
+  .kpi {
+    background: var(--card);
+    border-radius: var(--radius);
+    padding: 18px 16px;
+    border-left: 4px solid var(--borda);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+  }
+  .kpi.verde { border-color: var(--verde-claro); }
+  .kpi.solar { border-color: var(--solar); }
+  .kpi.rede { border-color: var(--rede); }
+  .kpi.custo { border-color: var(--custo); }
+  .kpi.bateria { border-color: var(--bateria); }
+  .kpi label { font-size: .72rem; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--texto-sec); }
+  .kpi .val { font-size: 1.6rem; font-weight: 700; margin: 4px 0 2px; line-height: 1; }
+  .kpi .sub { font-size: .75rem; color: var(--texto-sec); }
+
+  /* Tabela */
+  .section-title {
+    font-size: .85rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--texto-sec); margin-bottom: 12px; margin-top: 28px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .section-title::after { content: ''; flex: 1; height: 1px; background: var(--borda); }
+
+  .card { background: var(--card); border-radius: var(--radius); padding: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.07); margin-bottom: 20px; }
+
+  .chart-wrap { position: relative; height: 260px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+  th { background: var(--bg); color: var(--texto-sec); font-weight: 600; text-align: right; padding: 9px 12px; border-bottom: 2px solid var(--borda); font-size: .75rem; text-transform: uppercase; letter-spacing: .04em; }
+  th:first-child { text-align: left; }
+  td { padding: 9px 12px; border-bottom: 1px solid var(--borda); text-align: right; }
+  td:first-child { text-align: left; font-weight: 600; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--bg); }
+  .total-row td { font-weight: 700; background: var(--verde-pale); }
+
+  tr.clickable { cursor: pointer; }
+  tr.clickable:hover td { background: var(--verde-pale); }
+  tr.selected td { background: var(--verde-pale) !important; border-left: 3px solid var(--verde); }
+
+  .empty { text-align: center; padding: 40px; color: var(--texto-sec); font-size: .9rem; }
+  .empty span { display: block; font-size: 2.5rem; margin-bottom: 10px; }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
+  .tab {
+    padding: 7px 16px; border-radius: 20px; font-size: .8rem; font-weight: 600; cursor: pointer;
+    border: 2px solid var(--borda); background: var(--card); color: var(--texto-sec); transition: all .15s;
+  }
+  .tab.active { background: var(--verde); color: white; border-color: var(--verde); }
+
+  .ano-btn {
+    padding: 5px 14px; border-radius: 20px; font-size: .8rem; font-weight: 600; cursor: pointer;
+    border: 2px solid var(--borda); background: var(--card); color: var(--texto-sec); transition: all .15s;
+  }
+  .ano-btn.active { background: var(--solar); color: white; border-color: var(--solar); }
+
+  /* Dropdown ano */
+  .ano-dropdown { position: relative; display: inline-block; }
+  .ano-dropdown-btn {
+    padding: 7px 14px; border-radius: 20px; font-size: .8rem; font-weight: 600; cursor: pointer;
+    border: 2px solid var(--borda); background: var(--card); color: var(--texto-sec);
+    display: flex; align-items: center; gap: 6px; transition: all .15s;
+  }
+  .ano-dropdown-btn.active { background: var(--solar); color: white; border-color: var(--solar); }
+  .ano-dropdown-menu {
+    display: none; position: absolute; right: 0; top: calc(100% + 6px);
+    background: var(--card); border: 1px solid var(--borda); border-radius: 10px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12); z-index: 200; min-width: 110px; overflow: hidden;
+  }
+  .ano-dropdown-menu.open { display: block; }
+  .ano-dropdown-item {
+    padding: 9px 16px; font-size: .83rem; font-weight: 600; cursor: pointer;
+    color: var(--texto-sec); transition: background .12s;
+  }
+  .ano-dropdown-item:hover { background: var(--bg); }
+  .ano-dropdown-item.active { color: var(--solar); background: var(--solar-pale); }
+
+  footer { text-align: center; color: var(--texto-sec); font-size: .75rem; padding: 28px 16px; border-top: 1px solid var(--borda); margin-top: 16px; }
+</style>
+</head>
+<body>
+
+<header>
+  <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+    <rect width="36" height="36" rx="8" fill="rgba(255,255,255,0.12)"/>
+    <!-- Documento base -->
+    <rect x="8" y="6" width="16" height="22" rx="2" fill="rgba(255,255,255,0.9)"/>
+    <rect x="8" y="6" width="16" height="22" rx="2" stroke="rgba(255,255,255,0.3)" stroke-width="0.5"/>
+    <!-- Linhas do documento -->
+    <line x1="11" y1="12" x2="21" y2="12" stroke="#8c3a4a" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="11" y1="16" x2="21" y2="16" stroke="#8c3a4a" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="11" y1="20" x2="17" y2="20" stroke="#8c3a4a" stroke-width="1.5" stroke-linecap="round"/>
+    <!-- Sol pequeno canto -->
+    <circle cx="27" cy="26" r="7" fill="#8c3a4a"/>
+    <line x1="27" y1="20" x2="27" y2="22" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="27" y1="30" x2="27" y2="32" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="21" y1="26" x2="23" y2="26" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="31" y1="26" x2="33" y2="26" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+    <circle cx="27" cy="26" r="3" fill="white"/>
+  </svg>
+  <div>
+    <h1>Painel de Energia · Sublinha Conta</h1>
+    <p>Consumo EDP · Produção Solar · Bateria · Custos</p>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- Filtro de ano agora no dropdown das tabs -->
+
+  <div id="modalExport" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center;padding:20px">
+    <div style="background:white;border-radius:12px;padding:24px;max-width:700px;width:100%;max-height:80vh;overflow:auto">
+      <h3 style="margin-bottom:10px">Bloco de código atualizado</h3>
+      <p style="font-size:.82rem;color:var(--texto-sec);margin-bottom:12px">Copia este bloco e pede para eu o inserir no ficheiro HTML, substituindo o bloco <code>FATURAS_EDP_HARDCODED</code> existente — assim os dados ficam permanentes.</p>
+      <textarea id="exportTextarea" style="width:100%;height:300px;font-family:monospace;font-size:.75rem;padding:10px;border:1px solid var(--borda);border-radius:6px" readonly></textarea>
+      <div style="margin-top:12px;text-align:right">
+        <button onclick="document.getElementById('modalExport').style.display='none'" style="padding:8px 16px;background:var(--bg);border:none;border-radius:8px;cursor:pointer;margin-right:8px">Fechar</button>
+        <button onclick="copiarExport()" style="padding:8px 16px;background:var(--verde);color:white;border:none;border-radius:8px;cursor:pointer;font-weight:600">Copiar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="modalExportSolar" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center;padding:20px">
+    <div style="background:white;border-radius:12px;padding:24px;max-width:700px;width:100%;max-height:80vh;overflow:auto">
+      <h3 style="margin-bottom:10px">☀️ Dados solares para código</h3>
+      <p style="font-size:.82rem;color:var(--texto-sec);margin-bottom:12px">Copia este bloco e cola numa mensagem ao Claude, pedindo para substituir o bloco <code>SOLAR_HARDCODED</code> no ficheiro HTML — assim os dados ficam permanentes.</p>
+      <textarea id="exportSolarTextarea" style="width:100%;height:300px;font-family:monospace;font-size:.75rem;padding:10px;border:1px solid var(--borda);border-radius:6px" readonly></textarea>
+      <div style="margin-top:12px;text-align:right">
+        <button onclick="document.getElementById('modalExportSolar').style.display='none'" style="padding:8px 16px;background:var(--bg);border:none;border-radius:8px;cursor:pointer;margin-right:8px">Fechar</button>
+        <button onclick="copiarExportSolar()" style="padding:8px 16px;background:var(--solar);color:white;border:none;border-radius:8px;cursor:pointer;font-weight:600">Copiar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="modalDados" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center;padding:20px">
+    <div style="background:white;border-radius:12px;padding:24px;max-width:480px;width:100%;max-height:80vh;overflow:auto">
+      <h3 id="modalDadosTitulo" style="margin-bottom:4px;color:var(--texto)">—</h3>
+      <p style="font-size:.75rem;color:var(--texto-sec);margin-bottom:14px">Dados de origem para este mês</p>
+      <div id="modalDadosCorpo"></div>
+      <div style="margin-top:16px;text-align:right">
+        <button onclick="document.getElementById('modalDados').style.display='none'" style="padding:8px 16px;background:var(--bg);border:none;border-radius:8px;cursor:pointer;font-weight:600">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="msgs"></div>
+
+  <!-- KPIs -->
+  <div class="kpis" id="kpis" style="display:none">
+    <div class="kpi rede">
+      <label>Consumo Rede</label>
+      <div class="val" id="kpi-rede">—</div>
+      <div class="sub">kWh total</div>
+    </div>
+    <div class="kpi solar">
+      <label>Produção Solar</label>
+      <div class="val" id="kpi-solar">—</div>
+      <div class="sub">kWh total</div>
+    </div>
+    <div class="kpi verde">
+      <label>Autoconsumo</label>
+      <div class="val" id="kpi-auto">—</div>
+      <div class="sub">% médio</div>
+    </div>
+    <div class="kpi bateria">
+      <label>Bateria (descarga)</label>
+      <div class="val" id="kpi-bat">—</div>
+      <div class="sub">kWh total</div>
+    </div>
+    <div class="kpi custo">
+      <label>Custo Total</label>
+      <div class="val" id="kpi-custo">—</div>
+      <div class="sub">€ c/ IVA</div>
+    </div>
+  </div>
+
+  <!-- Conteúdo principal -->
+  <div id="dashboard" style="display:none">
+
+    <div class="tabs" style="display:flex;align-items:center;flex-wrap:wrap;gap:6px">
+      <div class="tab active" onclick="showTab('graficos')">📊 Gráficos</div>
+      <div class="tab" onclick="showTab('tabela')">📋 Tabela</div>
+      <div class="tab" onclick="showTab('faturacao')">🧾 Faturação</div>
+      <div class="tab" onclick="showTab('roi')">💰 ROI</div>
+      <!-- Dropdown filtro de ano -->
+      <div class="ano-dropdown" id="anoDropdown" style="margin-left:4px">
+        <button class="ano-dropdown-btn" id="anoDropdownBtn" onclick="toggleAnoDropdown()">
+          <span id="anoDropdownLabel">Todos os anos</span> ▾
+        </button>
+        <div class="ano-dropdown-menu" id="anoDropdownMenu"></div>
+      </div>
+      <!-- Tab Preferências à direita -->
+      <div class="tab" onclick="showTab('preferencias')" style="margin-left:auto">⚙️ Preferências</div>
+    </div>
+
+    <div id="tab-graficos">
+      <div class="section-title">Consumo da Rede vs Produção Solar</div>
+      <div class="card"><div class="chart-wrap"><canvas id="chartConsumo"></canvas></div></div>
+
+      <div class="section-title">Custos Mensais (€ com IVA)</div>
+      <div class="card"><div class="chart-wrap"><canvas id="chartCusto"></canvas></div></div>
+
+      <div class="section-title">Bateria — Carga e Descarga</div>
+      <div class="card"><div class="chart-wrap"><canvas id="chartBat"></canvas></div></div>
+
+      <div class="section-title">Taxa de Autoconsumo (%)</div>
+      <div class="card"><div class="chart-wrap"><canvas id="chartAuto"></canvas></div></div>
+
+      <div class="section-title">📜 Consumo Histórico — Antes vs Depois dos Painéis Solares</div>
+      <div class="card"><div class="chart-wrap"><canvas id="chartHistorico"></canvas></div></div>
+      <p style="font-size:.78rem;color:var(--texto-sec);margin-top:-8px">Dados de 2020-2022 (antes da instalação solar) carregados a partir do registo histórico EDP. Não inclui produção solar nem custos detalhados — apenas consumo total da rede.</p>
+    </div>
+
+    <div id="tab-tabela" style="display:none">
+      <div class="section-title">Dados Mensais</div>
+      <div class="card" style="overflow-x:auto">
+        <table id="tabelaDados">
+          <thead>
+            <tr>
+              <th>Mês</th>
+              <th>Rede (kWh)</th>
+              <th>Solar (kWh)</th>
+              <th>Autoconsumo (kWh)</th>
+              <th>Autoconsumo (%)</th>
+              <th>Bat. Carga (kWh)</th>
+              <th>Bat. Descarga (kWh)</th>
+              <th>Exportação (kWh)</th>
+              <th>Consumo Total (kWh)</th>
+              <th>Custo EDP (€)</th>
+              <th>Total c/ IVA (€)</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyDados"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="tab-faturacao" style="display:none">
+      <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+        <button onclick="gerarRelatorioAnual()" style="padding:9px 18px;background:var(--verde);color:white;border:none;border-radius:8px;font-weight:600;cursor:pointer;font-size:.85rem">📄 Relatório Anual (PDF)</button>
+        <button onclick="gerarRelatorioMensal()" style="padding:9px 18px;background:var(--card);border:2px solid var(--verde);color:var(--verde);border-radius:8px;font-weight:600;cursor:pointer;font-size:.85rem">📄 Relatório da Fatura Selecionada (PDF)</button>
+      </div>
+
+      <div class="section-title">Tabela de Faturação</div>
+      <div class="card" style="overflow-x:auto;overflow-y:auto;max-height:420px">
+        <table id="tabelaFat">
+          <thead>
+            <tr>
+              <th>Período de Faturação</th>
+              <th>Total (€)</th>
+              <th>Consumo (kWh)</th>
+              <th>Eletricidade (€)</th>
+              <th>Impostos (€)</th>
+              <th>Preço/kWh (€)</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyFat"></tbody>
+        </table>
+      </div>
+      <p style="font-size:.78rem;color:var(--texto-sec);margin-top:-8px;margin-bottom:8px">💡 Clica numa linha para ver o detalhe dessa fatura nos gráficos abaixo.</p>
+
+      <div class="section-title" id="tituloDetFat">Detalhe da Fatura Selecionada</div>
+      <div class="card"><div class="chart-wrap"><canvas id="chartFatLinha"></canvas></div></div>
+
+      <div class="section-title">Totais — Todas as Faturas</div>
+      <div class="card"><div class="chart-wrap"><canvas id="chartFatTotal"></canvas></div></div>
+
+      <div class="section-title" id="tituloMixLinha">Origem da Eletricidade — Fatura Selecionada</div>
+      <div class="card"><div class="chart-wrap"><canvas id="chartMixLinha"></canvas></div></div>
+
+      <div class="section-title">Origem da Eletricidade — Média de Todas as Faturas</div>
+      <div class="card"><div class="chart-wrap"><canvas id="chartMixTotal"></canvas></div></div>
+    </div>
+
+    <div id="tab-roi" style="display:none">
+      <div class="card" style="margin-bottom:20px">
+        <label style="font-size:.85rem;font-weight:600;color:var(--texto-sec)">💶 Investimento total na instalação (€)</label><br>
+        <input type="number" id="inputInvestimento" placeholder="ex: 14805.23" step="0.01"
+          style="margin-top:8px;padding:10px 12px;border:2px solid var(--borda);border-radius:8px;font-size:1rem;width:220px">
+        <button onclick="renderROI()" style="margin-left:8px;padding:10px 18px;background:var(--verde);color:white;border:none;border-radius:8px;font-weight:600;cursor:pointer">Calcular</button>
+      </div>
+
+      <div class="kpis" id="kpisRoi" style="display:none">
+        <div class="kpi rede">
+          <label>Investimento</label>
+          <div class="val" id="roi-invest">—</div>
+          <div class="sub">€ pago na instalação</div>
+        </div>
+        <div class="kpi solar">
+          <label>Poupança Acumulada</label>
+          <div class="val" id="roi-poupanca">—</div>
+          <div class="sub">€ desde início dos dados</div>
+        </div>
+        <div class="kpi verde">
+          <label>ROI Atual</label>
+          <div class="val" id="roi-pct">—</div>
+          <div class="sub">% do investimento recuperado</div>
+        </div>
+        <div class="kpi bateria">
+          <label>Payback Estimado</label>
+          <div class="val" id="roi-payback">—</div>
+          <div class="sub">anos até retorno total</div>
+        </div>
+      </div>
+
+      <div id="roi-empty" class="empty" style="display:none">
+        <span>💰</span>
+        Indica o valor do investimento e carrega faturas EDP + dados FusionSolar (com autoconsumo) para calcular o ROI.
+      </div>
+
+      <div id="roi-content" style="display:none">
+        <div class="section-title">Custo Real vs Custo Estimado Sem Solar (€/mês)</div>
+        <div class="card"><div class="chart-wrap"><canvas id="chartRoiMensal"></canvas></div></div>
+
+        <div class="section-title">Poupança Acumulada vs Investimento</div>
+        <div class="card"><div class="chart-wrap"><canvas id="chartRoiAcumulado"></canvas></div></div>
+
+        <div class="section-title">Detalhe Mensal</div>
+        <div class="card" style="overflow-x:auto">
+          <table id="tabelaRoi">
+            <thead>
+              <tr>
+                <th>Mês</th>
+                <th>Rede (kWh)</th>
+                <th>Autoconsumo (kWh)</th>
+                <th>Consumo Total (kWh)</th>
+                <th>Preço/kWh (€)</th>
+                <th>Custo Real (€)</th>
+                <th>Custo Sem Solar (€)</th>
+                <th>Poupança (€)</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyRoi"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab Preferências -->
+    <div id="tab-preferencias" style="display:none">
+      <div class="section-title">Importação de Dados</div>
+      <div class="upload-section">
+        <label class="drop-zone" id="dzEdp">
+          <input type="file" id="fileEdp" accept=".pdf" multiple>
+          <span class="icon">🧾</span>
+          <h3>Faturas EDP (PDF)</h3>
+          <p>Arrasta ou clica para carregar<br>uma ou várias faturas</p>
+          <span class="badge" id="badgeEdp">0 faturas</span>
+        </label>
+        <label class="drop-zone" id="dzSolar">
+          <input type="file" id="fileSolar" accept=".xlsx,.xls" multiple>
+          <span class="icon">☀️</span>
+          <h3>FusionSolar (Excel)</h3>
+          <p>Relatório mensal ou diário<br>da instalação</p>
+          <span class="badge badge-solar" id="badgeSolar">0 ficheiros</span>
+        </label>
+      </div>
+
+      <div class="section-title" style="margin-top:8px">Exportação para Código</div>
+      <div class="card" style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+        <div style="flex:1;min-width:200px">
+          <p style="font-size:.82rem;color:var(--texto-sec);margin-bottom:12px">Após carregar ficheiros novos, exporta os dados para fixar permanentemente no HTML.</p>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <button onclick="exportarDadosParaCodigo()" style="padding:9px 18px;background:var(--card);border:2px solid var(--verde);color:var(--verde);border-radius:8px;font-weight:600;cursor:pointer;font-size:.85rem">💾 Exportar faturas EDP para código</button>
+            <button onclick="exportarSolarParaCodigo()" style="padding:9px 18px;background:var(--card);border:2px solid var(--solar);color:#b47d00;border-radius:8px;font-weight:600;cursor:pointer;font-size:.85rem">☀️ Exportar dados solares para código</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-title" style="margin-top:8px">Relatório da Instalação</div>
+      <div class="card">
+        <p style="font-size:.82rem;color:var(--texto-sec);margin-bottom:14px">Relatório PDF completo com ficha técnica, produção anual, análise de custos e projeção de retorno do investimento.</p>
+        <button onclick="gerarRelatorioGeral()" style="padding:10px 22px;background:var(--verde);color:white;border:none;border-radius:8px;font-weight:600;cursor:pointer;font-size:.9rem">📋 Relatório Geral da Instalação (PDF)</button>
+      </div>
+    </div>
+
+  </div>
+
+  <div id="empty" class="empty">
+    <span>⚡</span>
+    Carrega as faturas EDP e/ou os relatórios FusionSolar para começar.
+  </div>
+
+</div>
+
+<footer>Dados extraídos localmente · Nenhum ficheiro é enviado para a internet</footer>
+
+<script>
+// ─── Estado global ───────────────────────────────────────────────
+let dados = {}; // { 'YYYY-MM': { rede_kwh, solar_kwh, autoconsumo_kwh, autoconsumo_pct, bat_carga, bat_descarga, exportacao, consumo_total, custo_sem_iva, total_com_iva } }
+
+// Histórico de consumo 2020-2022 (antes da instalação solar/bateria — só kWh, sem dados de custo)
+const HISTORICO_PRE_SOLAR = {
+  '2020-05': 358, '2020-08': 1351, '2020-09': 712, '2020-11': 2018, '2020-12': 1740,
+  '2021-01': 1480, '2021-02': 1080, '2021-03': 795, '2021-04': 710, '2021-05': 683,
+  '2021-06': 540, '2021-07': 604, '2021-08': 622, '2021-09': 658, '2021-10': 1225,
+  '2021-11': 1568, '2022-01': 967, '2022-02': 1083
+};
+function carregarHistoricoPreSolar() {
+  Object.entries(HISTORICO_PRE_SOLAR).forEach(([mes, kwh]) => {
+    if (!dados[mes]) dados[mes] = {};
+    dados[mes].rede_kwh_historico = kwh;
+  });
+}
+carregarHistoricoPreSolar();
+
+// ─── Faturas EDP já processadas (dados fixos no código — sobrevivem a reload) ───
+const FATURAS_EDP_HARDCODED = {
+  '2022-09': { rede_kwh:442, custo_sem_iva:50.45, total_com_iva:65.43, taxas_impostos:14.98, preco_kwh:0.151, mix_energetico:{} },
+  '2022-10': { rede_kwh:406, custo_sem_iva:77.25, total_com_iva:98.62, taxas_impostos:21.37, preco_kwh:null, mix_energetico:{} },
+  '2022-11': { rede_kwh:1426, custo_sem_iva:123.27, total_com_iva:155.62, taxas_impostos:32.35, preco_kwh:0.151, mix_energetico:{} },
+  '2022-12': { rede_kwh:1332, custo_sem_iva:115.73, total_com_iva:146.27, taxas_impostos:30.54, preco_kwh:0.151, mix_energetico:{} },
+  '2023-02': { rede_kwh:2831, custo_sem_iva:178.76, total_com_iva:224.64, taxas_impostos:45.47, preco_kwh:0.1612, mix_energetico:{'Nuclear':6.73, 'Eólica':7.42, 'Hídrica':18.88, 'Cogeração Fóssil':2.65, 'Cogeração Renovável':0.09, 'Outras Renováveis':4.58, 'Resíduos Sólidos Urbanos':0.91, 'Gás Natural':57.92, 'Carvão':0.82} },
+  '2023-03': { rede_kwh:4712, custo_sem_iva:168.89, total_com_iva:234.67, taxas_impostos:47.42, preco_kwh:0.1612, mix_energetico:{'Nuclear':6.73, 'Eólica':7.42, 'Hídrica':18.88, 'Cogeração Fóssil':2.65, 'Cogeração Renovável':0.09, 'Outras Renováveis':4.58, 'Resíduos Sólidos Urbanos':0.91, 'Gás Natural':57.92, 'Carvão':0.82} },
+  '2023-04': { rede_kwh:1439, custo_sem_iva:89.41, total_com_iva:98.05, taxas_impostos:21.21, preco_kwh:0.1612, mix_energetico:{'Nuclear':6.73, 'Eólica':7.42, 'Hídrica':18.88, 'Cogeração Fóssil':2.65, 'Cogeração Renovável':0.09, 'Outras Renováveis':4.58, 'Resíduos Sólidos Urbanos':0.91, 'Gás Natural':57.92, 'Carvão':0.82} },
+  '2023-05': { rede_kwh:896, custo_sem_iva:67.5, total_com_iva:86.52, taxas_impostos:19.02, preco_kwh:0.1612, mix_energetico:{'Nuclear':6.73, 'Eólica':7.42, 'Hídrica':18.88, 'Cogeração Fóssil':2.65, 'Cogeração Renovável':0.09, 'Outras Renováveis':4.58, 'Resíduos Sólidos Urbanos':0.91, 'Gás Natural':57.92, 'Carvão':0.82} },
+  '2023-06': { rede_kwh:837, custo_sem_iva:70.14, total_com_iva:89.79, taxas_impostos:19.65, preco_kwh:0.1612, mix_energetico:{'Nuclear':6.73, 'Eólica':7.42, 'Hídrica':18.88, 'Cogeração Fóssil':2.65, 'Cogeração Renovável':0.09, 'Outras Renováveis':4.58, 'Resíduos Sólidos Urbanos':0.91, 'Gás Natural':57.92, 'Carvão':0.82} },
+  '2023-07': { rede_kwh:438, custo_sem_iva:83.37, total_com_iva:106.13, taxas_impostos:22.76, preco_kwh:0, mix_energetico:{'Nuclear':6.73, 'Eólica':7.42, 'Hídrica':18.88, 'Cogeração Fóssil':2.65, 'Cogeração Renovável':0.09, 'Outras Renováveis':4.58, 'Resíduos Sólidos Urbanos':0.91, 'Gás Natural':57.92, 'Carvão':0.82} },
+  '2023-09': { rede_kwh:310, custo_sem_iva:72.24, total_com_iva:92.29, taxas_impostos:20.05, preco_kwh:0.207, mix_energetico:{'Nuclear':6.73, 'Eólica':7.42, 'Hídrica':18.88, 'Cogeração Fóssil':2.65, 'Cogeração Renovável':0.09, 'Outras Renováveis':4.58, 'Resíduos Sólidos Urbanos':0.91, 'Gás Natural':57.92, 'Carvão':0.82} },
+  '2023-10': { rede_kwh:561, custo_sem_iva:118.46, total_com_iva:149.4, taxas_impostos:30.94, preco_kwh:0.207, mix_energetico:{'Nuclear':6.73, 'Eólica':7.42, 'Hídrica':18.88, 'Cogeração Fóssil':2.65, 'Cogeração Renovável':0.09, 'Outras Renováveis':4.58, 'Resíduos Sólidos Urbanos':0.91, 'Gás Natural':57.92, 'Carvão':0.82} },
+  '2023-11': { rede_kwh:742, custo_sem_iva:141.82, total_com_iva:178.29, taxas_impostos:36.47, preco_kwh:0.207, mix_energetico:{'Nuclear':6.73, 'Eólica':7.42, 'Hídrica':18.88, 'Cogeração Fóssil':2.65, 'Cogeração Renovável':0.09, 'Outras Renováveis':4.58, 'Resíduos Sólidos Urbanos':0.91, 'Gás Natural':57.92, 'Carvão':0.82} },
+  '2023-12': { rede_kwh:1110, custo_sem_iva:193.19, total_com_iva:241.8, taxas_impostos:48.61, preco_kwh:0.207, mix_energetico:{'Nuclear':6.73, 'Eólica':7.42, 'Hídrica':18.88, 'Cogeração Fóssil':2.65, 'Cogeração Renovável':0.09, 'Outras Renováveis':4.58, 'Resíduos Sólidos Urbanos':0.91, 'Gás Natural':57.92, 'Carvão':0.82} },
+  '2024-01': { rede_kwh:1144, custo_sem_iva:228.92, total_com_iva:285.96, taxas_impostos:57.04, preco_kwh:0.207, mix_energetico:{} },
+  '2024-03': { rede_kwh:431, custo_sem_iva:106.96, total_com_iva:135.2, taxas_impostos:28.24, preco_kwh:0.2063, mix_energetico:{} },
+  '2024-04': { rede_kwh:null, custo_sem_iva:null, total_com_iva:58.94, taxas_impostos:null, preco_kwh:null, mix_energetico:{} },
+  '2024-06': { rede_kwh:173, custo_sem_iva:61.31, total_com_iva:78.73, taxas_impostos:17.42, preco_kwh:0.2323, mix_energetico:{} },
+  '2024-07': { rede_kwh:173, custo_sem_iva:61.31, total_com_iva:78.73, taxas_impostos:17.42, preco_kwh:0.2323, mix_energetico:{} },
+  '2024-09': { rede_kwh:385, custo_sem_iva:109.57, total_com_iva:138.36, taxas_impostos:28.79, preco_kwh:0.2323, mix_energetico:{} },
+  '2024-10': { rede_kwh:null, custo_sem_iva:null, total_com_iva:165.12, taxas_impostos:null, preco_kwh:null, mix_energetico:{} },
+  '2024-11': { rede_kwh:700, custo_sem_iva:181.28, total_com_iva:226.94, taxas_impostos:45.66, preco_kwh:0.2323, mix_energetico:{'Nuclear':10.22, 'Carvão':0.55, 'Gás Natural':25.31, 'Cogeração Fóssil':3.04, 'Resíduos Sólidos Urbanos':0.48, 'Outras Renováveis':12.72, 'Cogeração Renovável':0.13, 'Hídrica':30.89, 'Eólica':16.65} },
+  '2024-12': { rede_kwh:700, custo_sem_iva:181.28, total_com_iva:226.94, taxas_impostos:45.66, preco_kwh:0.2323, mix_energetico:{'Nuclear':10.22, 'Carvão':0.55, 'Gás Natural':25.31, 'Cogeração Fóssil':3.04, 'Resíduos Sólidos Urbanos':0.48, 'Outras Renováveis':12.72, 'Cogeração Renovável':0.13, 'Hídrica':30.89, 'Eólica':16.65} },
+  '2025-01': { rede_kwh:913, custo_sem_iva:209.01, total_com_iva:261.31, taxas_impostos:52.3, preco_kwh:0.2323, mix_energetico:{'Nuclear':10.22, 'Carvão':0.55, 'Gás Natural':25.31, 'Cogeração Fóssil':3.04, 'Resíduos Sólidos Urbanos':0.48, 'Outras Renováveis':12.72, 'Cogeração Renovável':0.13, 'Hídrica':30.89, 'Eólica':16.65} },
+  '2025-02': { rede_kwh:749, custo_sem_iva:167.56, total_com_iva:210.12, taxas_impostos:42.56, preco_kwh:0.1975, mix_energetico:{'Nuclear':10.22, 'Carvão':0.55, 'Gás Natural':25.31, 'Cogeração Fóssil':3.04, 'Resíduos Sólidos Urbanos':0.48, 'Outras Renováveis':12.72, 'Cogeração Renovável':0.13, 'Hídrica':30.89, 'Eólica':16.65} },
+  '2025-03': { rede_kwh:746, custo_sem_iva:164.79, total_com_iva:206.72, taxas_impostos:41.93, preco_kwh:0.1975, mix_energetico:{'Nuclear':15.27, 'Carvão':0.87, 'Gás Natural':31.98, 'Cogeração Fóssil':4.76, 'Resíduos Sólidos Urbanos':0.36, 'Outras Renováveis':14.99, 'Cogeração Renovável':0.19, 'Hídrica':14.26, 'Eólica':17.34} },
+  '2025-04': { rede_kwh:295, custo_sem_iva:79.68, total_com_iva:101.48, taxas_impostos:21.8, preco_kwh:0.1975, mix_energetico:{'Nuclear':15.27, 'Carvão':0.87, 'Gás Natural':31.98, 'Cogeração Fóssil':4.76, 'Resíduos Sólidos Urbanos':0.36, 'Outras Renováveis':14.99, 'Cogeração Renovável':0.19, 'Hídrica':14.26, 'Eólica':17.34} },
+  '2025-05': { rede_kwh:180, custo_sem_iva:56.7, total_com_iva:73.07, taxas_impostos:16.37, preco_kwh:0.1975, mix_energetico:{'Nuclear':15.27, 'Carvão':0.87, 'Gás Natural':31.98, 'Cogeração Fóssil':4.76, 'Resíduos Sólidos Urbanos':0.36, 'Outras Renováveis':14.99, 'Cogeração Renovável':0.19, 'Hídrica':14.26, 'Eólica':17.34} },
+  '2025-06': { rede_kwh:73, custo_sem_iva:36.72, total_com_iva:48.36, taxas_impostos:11.64, preco_kwh:0.1975, mix_energetico:{'Nuclear':18.16, 'Carvão':1.02, 'Gás Natural':32.27, 'Cogeração Fóssil':5.39, 'Resíduos Sólidos Urbanos':0.42, 'Outras Renováveis':17.66, 'Cogeração Renovável':1.88, 'Hídrica':3.48, 'Eólica':19.74} },
+  '2025-07': { rede_kwh:129, custo_sem_iva:46.83, total_com_iva:60.87, taxas_impostos:14.04, preco_kwh:0.1975, mix_energetico:{'Nuclear':18.16, 'Carvão':1.02, 'Gás Natural':32.27, 'Cogeração Fóssil':5.39, 'Resíduos Sólidos Urbanos':0.42, 'Outras Renováveis':17.66, 'Cogeração Renovável':1.88, 'Hídrica':3.48, 'Eólica':19.74} },
+  '2025-08': { rede_kwh:196, custo_sem_iva:60.53, total_com_iva:77.81, taxas_impostos:17.28, preco_kwh:0.1975, mix_energetico:{'Nuclear':18.16, 'Carvão':1.02, 'Gás Natural':32.27, 'Cogeração Fóssil':5.39, 'Resíduos Sólidos Urbanos':0.42, 'Outras Renováveis':17.66, 'Cogeração Renovável':1.88, 'Hídrica':3.48, 'Eólica':19.74} },
+  '2025-09': { rede_kwh:160, custo_sem_iva:53.56, total_com_iva:69.18, taxas_impostos:15.62, preco_kwh:0.1975, mix_energetico:{'Nuclear':11.71, 'Carvão':0.64, 'Gás Natural':31.39, 'Cogeração Fóssil':3.57, 'Resíduos Sólidos Urbanos':0.64, 'Outras Renováveis':11.85, 'Cogeração Renovável':3.75, 'Hídrica':23.85, 'Eólica':12.6} },
+  '2025-10': { rede_kwh:483, custo_sem_iva:115.34, total_com_iva:145.56, taxas_impostos:30.22, preco_kwh:0.1975, mix_energetico:{'Nuclear':11.71, 'Carvão':0.64, 'Gás Natural':31.39, 'Cogeração Fóssil':3.57, 'Resíduos Sólidos Urbanos':0.64, 'Outras Renováveis':11.85, 'Cogeração Renovável':3.75, 'Hídrica':23.85, 'Eólica':12.6} },
+  '2025-11': { rede_kwh:834, custo_sem_iva:184.02, total_com_iva:230.47, taxas_impostos:46.45, preco_kwh:0.1975, mix_energetico:{'Nuclear':11.71, 'Carvão':0.64, 'Gás Natural':31.39, 'Cogeração Fóssil':3.57, 'Resíduos Sólidos Urbanos':0.64, 'Outras Renováveis':11.85, 'Cogeração Renovável':3.75, 'Hídrica':23.85, 'Eólica':12.6} },
+  '2025-12': { rede_kwh:985, custo_sem_iva:212.51, total_com_iva:265.71, taxas_impostos:53.2, preco_kwh:0.1975, mix_energetico:{'Nuclear':10.24, 'Carvão':0.44, 'Gás Natural':37.5, 'Cogeração Fóssil':3.07, 'Resíduos Sólidos Urbanos':0.79, 'Outras Renováveis':12.23, 'Cogeração Renovável':0.12, 'Hídrica':22.94, 'Eólica':12.66} },
+  '2026-01': { rede_kwh:1051, custo_sem_iva:217.06, total_com_iva:271.38, taxas_impostos:54.32, preco_kwh:0.1975, mix_energetico:{'Nuclear':10.24, 'Carvão':0.44, 'Gás Natural':37.5, 'Cogeração Fóssil':3.07, 'Resíduos Sólidos Urbanos':0.79, 'Outras Renováveis':12.23, 'Cogeração Renovável':0.12, 'Hídrica':22.94, 'Eólica':12.66} },
+  '2026-02': { rede_kwh:943, custo_sem_iva:192.62, total_com_iva:241.19, taxas_impostos:48.57, preco_kwh:0.1827, mix_energetico:{'Nuclear':10.24, 'Carvão':0.44, 'Gás Natural':37.5, 'Cogeração Fóssil':3.07, 'Resíduos Sólidos Urbanos':0.79, 'Outras Renováveis':12.23, 'Cogeração Renovável':0.12, 'Hídrica':22.94, 'Eólica':12.66} },
+  '2026-03': { rede_kwh:686, custo_sem_iva:144.3, total_com_iva:181.45, taxas_impostos:37.15, preco_kwh:0.1827, mix_energetico:{'Nuclear':9.86, 'Carvão':0.27, 'Gás Natural':41.72, 'Cogeração Fóssil':2.93, 'Resíduos Sólidos Urbanos':1.03, 'Outras Renováveis':11.27, 'Cogeração Renovável':0.11, 'Hídrica':20.19, 'Eólica':12.62} },
+  '2026-04': { rede_kwh:401, custo_sem_iva:95.57, total_com_iva:121.15, taxas_impostos:25.58, preco_kwh:0.1827, mix_energetico:{'Nuclear':9.86, 'Carvão':0.27, 'Gás Natural':41.72, 'Cogeração Fóssil':2.93, 'Resíduos Sólidos Urbanos':1.03, 'Outras Renováveis':11.27, 'Cogeração Renovável':0.11, 'Hídrica':20.19, 'Eólica':12.62} },
+  '2026-05': { rede_kwh:290, custo_sem_iva:74.93, total_com_iva:95.63, taxas_impostos:20.7, preco_kwh:0.1827, mix_energetico:{'Nuclear':9.86, 'Carvão':0.27, 'Gás Natural':41.72, 'Cogeração Fóssil':2.93, 'Resíduos Sólidos Urbanos':1.03, 'Outras Renováveis':11.27, 'Cogeração Renovável':0.11, 'Hídrica':20.19, 'Eólica':12.62} },
+  '2026-06': { rede_kwh:247, custo_sem_iva:68.01, total_com_iva:87.07, taxas_impostos:19.06, preco_kwh:0.1827, mix_energetico:{'Nuclear':7.21, 'Carvão':0.1, 'Gás Natural':46.23, 'Cogeração Fóssil':2.02, 'Resíduos Sólidos Urbanos':0.14, 'Outras Renováveis':10.07, 'Cogeração Renovável':0.08, 'Hídrica':23.64, 'Eólica':10.5} },
+}
+
+function carregarFaturasHardcoded() {
+  Object.entries(FATURAS_EDP_HARDCODED).forEach(([mes, d]) => {
+    if (!dados[mes]) dados[mes] = {};
+    Object.assign(dados[mes], d);
+  });
+}
+carregarFaturasHardcoded();
+
+// ─── Dados FusionSolar já processados (produção solar, autoconsumo, bateria) ───
+const SOLAR_HARDCODED = {
+  '2022-08': { solar_kwh:1013.73, autoconsumo_kwh:557.24, autoconsumo_pct:58.79, exportacao:456.49, bat_carga:392.36, bat_descarga:382.36 },
+  '2022-09': { solar_kwh:625.29, autoconsumo_kwh:625.24, autoconsumo_pct:99.99, exportacao:0.05, bat_carga:529.48, bat_descarga:533.76 },
+  '2022-10': { solar_kwh:559.38, autoconsumo_kwh:559.35, autoconsumo_pct:100.0, exportacao:0.03, bat_carga:457.84, bat_descarga:452.08 },
+  '2022-11': { solar_kwh:450.45, autoconsumo_kwh:450.41, autoconsumo_pct:99.99, exportacao:0.04, bat_carga:258.9, bat_descarga:255.1 },
+  '2022-12': { solar_kwh:303.57, autoconsumo_kwh:303.57, autoconsumo_pct:100.0, exportacao:0, bat_carga:110.9, bat_descarga:106.88 },
+  '2023-01': { solar_kwh:568.82, autoconsumo_kwh:568.82, autoconsumo_pct:100.0, exportacao:0, bat_carga:166.94, bat_descarga:163.24 },
+  '2023-02': { solar_kwh:583.29, autoconsumo_kwh:583.29, autoconsumo_pct:100.0, exportacao:0, bat_carga:195.27, bat_descarga:191.02 },
+  '2023-03': { solar_kwh:754.68, autoconsumo_kwh:676.42, autoconsumo_pct:92.42, exportacao:78.26, bat_carga:240.29, bat_descarga:232.48 },
+  '2023-04': { solar_kwh:1104.98, autoconsumo_kwh:652.84, autoconsumo_pct:61.87, exportacao:452.14, bat_carga:504.62, bat_descarga:496.2 },
+  '2023-05': { solar_kwh:1183.1, autoconsumo_kwh:659.35, autoconsumo_pct:57.63, exportacao:523.75, bat_carga:496.82, bat_descarga:486.72 },
+  '2023-06': { solar_kwh:839.93, autoconsumo_kwh:659.63, autoconsumo_pct:84.83, exportacao:180.3, bat_carga:497.5, bat_descarga:478.5 },
+  '2023-07': { solar_kwh:618.16, autoconsumo_kwh:618.11, autoconsumo_pct:99.99, exportacao:0.05, bat_carga:454.0, bat_descarga:437.78 },
+  '2023-08': { solar_kwh:571.01, autoconsumo_kwh:571.01, autoconsumo_pct:100.0, exportacao:0, bat_carga:448.9, bat_descarga:449.66 },
+  '2023-09': { solar_kwh:586.21, autoconsumo_kwh:586.17, autoconsumo_pct:99.99, exportacao:0.04, bat_carga:531.08, bat_descarga:512.62 },
+  '2023-10': { solar_kwh:450.34, autoconsumo_kwh:450.33, autoconsumo_pct:100.0, exportacao:0.01, bat_carga:399.6, bat_descarga:395.74 },
+  '2023-11': { solar_kwh:435.5, autoconsumo_kwh:435.49, autoconsumo_pct:100.0, exportacao:0.01, bat_carga:314.36, bat_descarga:309.34 },
+  '2023-12': { solar_kwh:440.52, autoconsumo_kwh:440.5, autoconsumo_pct:100.0, exportacao:0.02, bat_carga:194.86, bat_descarga:189.4 },
+  '2024-01': { solar_kwh:451.29, autoconsumo_kwh:451.29, autoconsumo_pct:100.0, exportacao:0, bat_carga:80.94, bat_descarga:78.45 },
+  '2024-02': { solar_kwh:588.21, autoconsumo_kwh:588.21, autoconsumo_pct:100.0, exportacao:0, bat_carga:143.56, bat_descarga:139.46 },
+  '2024-03': { solar_kwh:697.92, autoconsumo_kwh:697.89, autoconsumo_pct:99.99, exportacao:0.03, bat_carga:185.57, bat_descarga:182.56 },
+  '2024-04': { solar_kwh:758.54, autoconsumo_kwh:758.5, autoconsumo_pct:100.0, exportacao:0.04, bat_carga:548.22, bat_descarga:530.14 },
+  '2024-05': { solar_kwh:671.17, autoconsumo_kwh:671.13, autoconsumo_pct:99.99, exportacao:0.04, bat_carga:488.14, bat_descarga:475.72 },
+  '2024-06': { solar_kwh:635.09, autoconsumo_kwh:635.04, autoconsumo_pct:99.99, exportacao:0.05, bat_carga:446.5, bat_descarga:434.64 },
+  '2024-07': { solar_kwh:771.13, autoconsumo_kwh:771.08, autoconsumo_pct:99.99, exportacao:0.05, bat_carga:524.62, bat_descarga:517.18 },
+  '2024-08': { solar_kwh:609.84, autoconsumo_kwh:609.82, autoconsumo_pct:100.0, exportacao:0.02, bat_carga:384.4, bat_descarga:369.34 },
+  '2024-09': { solar_kwh:662.73, autoconsumo_kwh:662.66, autoconsumo_pct:99.99, exportacao:0.07, bat_carga:476.1, bat_descarga:477.36 },
+  '2024-10': { solar_kwh:539.28, autoconsumo_kwh:539.26, autoconsumo_pct:100.0, exportacao:0.02, bat_carga:397.88, bat_descarga:395.02 },
+  '2024-11': { solar_kwh:467.58, autoconsumo_kwh:467.57, autoconsumo_pct:100.0, exportacao:0.01, bat_carga:223.78, bat_descarga:212.44 },
+  '2024-12': { solar_kwh:540.32, autoconsumo_kwh:540.31, autoconsumo_pct:100.0, exportacao:0.01, bat_carga:203.8, bat_descarga:204.66 },
+  '2025-01': { solar_kwh:824.2, autoconsumo_kwh:824.16, autoconsumo_pct:100.0, exportacao:0.04, bat_carga:107.56, bat_descarga:104.69 },
+  '2025-02': { solar_kwh:1005.72, autoconsumo_kwh:1005.68, autoconsumo_pct:100.0, exportacao:0.04, bat_carga:106.14, bat_descarga:103.63 },
+  '2025-03': { solar_kwh:1177.44, autoconsumo_kwh:1177.38, autoconsumo_pct:100.0, exportacao:0.06, bat_carga:167.13, bat_descarga:158.15 },
+  '2025-04': { solar_kwh:1387.98, autoconsumo_kwh:1387.9, autoconsumo_pct:99.99, exportacao:0.08, bat_carga:470.48, bat_descarga:458.48 },
+  '2025-05': { solar_kwh:1671.96, autoconsumo_kwh:1671.9, autoconsumo_pct:100.0, exportacao:0.06, bat_carga:519.1, bat_descarga:513.46 },
+  '2025-06': { solar_kwh:1392.54, autoconsumo_kwh:1392.42, autoconsumo_pct:99.99, exportacao:0.12, bat_carga:444.4, bat_descarga:426.46 },
+  '2025-07': { solar_kwh:1317.92, autoconsumo_kwh:1317.86, autoconsumo_pct:99.99, exportacao:0.06, bat_carga:396.8, bat_descarga:392.44 },
+  '2025-08': { solar_kwh:1272.8, autoconsumo_kwh:1272.76, autoconsumo_pct:100.0, exportacao:0.04, bat_carga:388.28, bat_descarga:377.4 },
+  '2025-09': { solar_kwh:1384.26, autoconsumo_kwh:1384.24, autoconsumo_pct:100.0, exportacao:0.02, bat_carga:452.46, bat_descarga:446.5 },
+  '2025-10': { solar_kwh:1244.24, autoconsumo_kwh:1244.2, autoconsumo_pct:100.0, exportacao:0.04, bat_carga:329.88, bat_descarga:333.4 },
+  '2025-11': { solar_kwh:938.36, autoconsumo_kwh:938.04, autoconsumo_pct:99.97, exportacao:0.32, bat_carga:283.0, bat_descarga:275.3 },
+  '2025-12': { solar_kwh:795.78, autoconsumo_kwh:795.66, autoconsumo_pct:99.99, exportacao:0.12, bat_carga:237.94, bat_descarga:230.8 },
+  '2026-01': { solar_kwh:692.76, autoconsumo_kwh:692.62, autoconsumo_pct:99.99, exportacao:0.14, bat_carga:105.36, bat_descarga:102.0 },
+  '2026-02': { solar_kwh:875.54, autoconsumo_kwh:875.26, autoconsumo_pct:99.97, exportacao:0.28, bat_carga:113.27, bat_descarga:104.73 },
+  '2026-03': { solar_kwh:1520.04, autoconsumo_kwh:1519.5, autoconsumo_pct:99.97, exportacao:0.54, bat_carga:184.36, bat_descarga:183.91 },
+  '2026-04': { solar_kwh:1589.78, autoconsumo_kwh:1589.56, autoconsumo_pct:99.99, exportacao:0.22, bat_carga:487.3, bat_descarga:470.1 },
+  '2026-05': { solar_kwh:1681.68, autoconsumo_kwh:1681.46, autoconsumo_pct:99.99, exportacao:0.22, bat_carga:526.76, bat_descarga:527.52 },
+  '2026-06': { solar_kwh:1413.8, autoconsumo_kwh:1413.64, autoconsumo_pct:99.99, exportacao:0.16, bat_carga:401.88, bat_descarga:389.25 },
+};
+
+function carregarSolarHardcoded() {
+  Object.entries(SOLAR_HARDCODED).forEach(([mes, d]) => {
+    if (!dados[mes]) dados[mes] = {};
+    Object.assign(dados[mes], d);
+  });
+}
+carregarSolarHardcoded();
+
+let charts = {};
+let anoFiltro = 'Todos';
+
+function buildFiltroAno() {
+  const anos = [...new Set(Object.keys(dados).map(m => m.split('-')[0]))].filter(a => a >= '2022').sort();
+  const menu = document.getElementById('anoDropdownMenu');
+  const btn = document.getElementById('anoDropdownBtn');
+  const lbl = document.getElementById('anoDropdownLabel');
+  if (!menu) return;
+  menu.innerHTML = '';
+  ['Todos', ...anos].forEach(ano => {
+    const item = document.createElement('div');
+    item.className = 'ano-dropdown-item' + (anoFiltro === ano ? ' active' : '');
+    item.textContent = ano === 'Todos' ? 'Todos os anos' : ano;
+    item.onclick = () => {
+      anoFiltro = ano;
+      lbl.textContent = ano === 'Todos' ? 'Todos os anos' : ano;
+      btn.classList.toggle('active', ano !== 'Todos');
+      menu.classList.remove('open');
+      buildFiltroAno();
+      render();
+      renderFaturacao();
+    };
+    menu.appendChild(item);
+  });
+  lbl.textContent = anoFiltro === 'Todos' ? 'Todos os anos' : anoFiltro;
+  btn.classList.toggle('active', anoFiltro !== 'Todos');
+}
+
+function toggleAnoDropdown() {
+  document.getElementById('anoDropdownMenu').classList.toggle('open');
+}
+
+// Fechar dropdown ao clicar fora
+document.addEventListener('click', e => {
+  const dd = document.getElementById('anoDropdown');
+  if (dd && !dd.contains(e.target)) document.getElementById('anoDropdownMenu').classList.remove('open');
+});
+
+function dadosFiltrados() {
+  if (anoFiltro === 'Todos') return dados;
+  const filtrado = {};
+  Object.keys(dados).filter(m => m.startsWith(anoFiltro)).forEach(m => filtrado[m] = dados[m]);
+  return filtrado;
+}
+
+// ─── Drag & drop visual ──────────────────────────────────────────
+function setupDropZone(zoneId, handler) {
+  const el = document.getElementById(zoneId);
+  el.addEventListener('dragover', e => { e.preventDefault(); el.classList.add('drag'); });
+  el.addEventListener('dragleave', () => el.classList.remove('drag'));
+  el.addEventListener('drop', e => {
+    e.preventDefault();
+    el.classList.remove('drag');
+    if (e.dataTransfer.files.length) handler(e.dataTransfer.files);
+  });
+}
+setupDropZone('dzEdp', processEdpFiles);
+setupDropZone('dzSolar', processSolarFiles);
+
+document.getElementById('fileEdp').addEventListener('change', e => processEdpFiles(e.target.files));
+document.getElementById('fileSolar').addEventListener('change', e => processSolarFiles(e.target.files));
+
+// ─── Mensagens ───────────────────────────────────────────────────
+function msg(text, tipo='info') {
+  const d = document.getElementById('msgs');
+  const m = document.createElement('div');
+  m.className = 'msg ' + tipo;
+  m.innerHTML = (tipo==='ok'?'✅ ':tipo==='err'?'❌ ':'ℹ️ ') + text;
+  d.appendChild(m);
+  setTimeout(() => m.remove(), 6000);
+}
+
+// ─── Mesclar dados ───────────────────────────────────────────────
+function merge(mes, campo, valor) {
+  if (!dados[mes]) dados[mes] = {};
+  dados[mes][campo] = valor;
+}
+
+// ─── PDF EDP ─────────────────────────────────────────────────────
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+async function processEdpFiles(files) {
+  let count = 0;
+  for (const file of files) {
+    try {
+      await parseEdpPdf(file);
+      count++;
+    } catch(e) {
+      msg('Erro a ler ' + file.name + ': ' + e.message, 'err');
+    }
+  }
+  document.getElementById('badgeEdp').textContent = count + ' fatura' + (count!==1?'s':'');
+  render();
+}
+
+async function parseEdpPdf(file) {
+  const ab = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({data: ab}).promise;
+  let fullText = '';
+  for (let p = 1; p <= pdf.numPages; p++) {
+    const page = await pdf.getPage(p);
+    const tc = await page.getTextContent();
+    fullText += tc.items.map(i => i.str).join(' ') + '\n';
+  }
+
+  // Período de faturação → mês-chave
+  const periodoM = fullText.match(/Per[íi]odo de fatura[çc][ãa]o[:\s]+\d+\s+de\s+[\wçãáéíóúâêôõà]+(?:\s+de)?(?:\s+\d{4})?\s+a\s+\d+\s+de\s+([\wçãáéíóúâêôõà]+)\s+(\d{4})/i);
+  if (!periodoM) throw new Error('Período de faturação não encontrado');
+  const meses = {janeiro:'01',fevereiro:'02',março:'03',abril:'04',maio:'05',junho:'06',julho:'07',agosto:'08',setembro:'09',outubro:'10',novembro:'11',dezembro:'12'};
+  const mes = periodoM[2] + '-' + (meses[periodoM[1].toLowerCase()] || '??');
+
+  // Consumo kWh (soma todos os blocos — pode haver mais que um se houve mudança de tarifa a meio do mês)
+  const consumoMatches = [...fullText.matchAll(/Simples\s+([\d]+)\s+kWh/gi)];
+  if (consumoMatches.length) {
+    const totalKwh = consumoMatches.reduce((s,m) => s + parseInt(m[1]), 0);
+    merge(mes, 'rede_kwh', totalKwh);
+  }
+
+  // Custo eletricidade sem IVA
+  const custoM = fullText.match(/A\s+Total\s+([\d,\.]+)\s+€\s+sem\s+IVA/i);
+  if (custoM) merge(mes, 'custo_sem_iva', parseFloat(custoM[1].replace(',','.')));
+
+  // Total com IVA (Quanto tenho a pagar)
+  const totalM = fullText.match(/Quanto tenho\s+a pagar\?\s*([\d,\.]+)\s*€/i);
+  if (totalM) merge(mes, 'total_com_iva', parseFloat(totalM[1].replace(',','.')));
+
+  // Taxas, Impostos e Outros Encargos (4ª coluna da linha "X € Aderir Aderir Y €")
+  const taxasM = fullText.match(/([\d,\.]+)\s*€\s*Aderir\s*Aderir\s*([\d,\.]+)\s*€/i);
+  if (taxasM) merge(mes, 'taxas_impostos', parseFloat(taxasM[2].replace(',','.')));
+
+  // Mix energético — "De onde vem a minha Eletricidade?" bloco
+  const mixM = fullText.match(/De onde vem a minha Eletricidade\?([\s\S]{0,600}?)(?:Mix energ[ée]tico|5 Eólica)/i);
+  if (mixM) {
+    const mixText = mixM[1];
+    const fontes = ['Nuclear','Carvão','Gás Natural','Cogeração Fóssil','Resíduos Sólidos Urbanos','Outras Renováveis','Cogeração Renovável','Hídrica','Eólica','Geotermia','Diesel','Fuelóleo'];
+    const mix = {};
+    fontes.forEach(f => {
+      const re = new RegExp(f.replace(/[áéíóúâêôãõç]/g, c => ({'á':'[áa]','é':'[ée]','í':'[íi]','ó':'[óo]','ú':'[úu]','â':'[âa]','ê':'[êe]','ô':'[ôo]','ã':'[ãa]','õ':'[õo]','ç':'[çc]'}[c]||c)) + '\\s+([\\d,\\.]+)%', 'i');
+      const m2 = mixText.match(re);
+      if (m2) mix[f] = parseFloat(m2[1].replace(',','.'));
+    });
+    if (Object.keys(mix).length) merge(mes, 'mix_energetico', mix);
+  }
+
+  // Preço por kWh (tarifa simples, € sem IVA por kWh)
+  const precoM = fullText.match(/Simples\s+\d+\s+kWh\s+([\d,\.]+)\s*€/i);
+  if (precoM) merge(mes, 'preco_kwh', parseFloat(precoM[1].replace(',','.')));
+
+  msg('Fatura EDP lida: ' + mes, 'ok');
+}
+
+// ─── Excel FusionSolar ───────────────────────────────────────────
+async function processSolarFiles(files) {
+  let count = 0;
+  for (const file of files) {
+    try {
+      await parseSolarXlsx(file);
+      count++;
+    } catch(e) {
+      msg('Erro a ler ' + file.name + ': ' + e.message, 'err');
+    }
+  }
+  document.getElementById('badgeSolar').textContent = count + ' ficheiro' + (count!==1?'s':'');
+  render();
+}
+
+async function parseSolarXlsx(file) {
+  const ab = await file.arrayBuffer();
+  const wb = XLSX.read(ab, {type:'array'});
+  const ws = wb.Sheets[wb.SheetNames[0]];
+
+  // Corrige range desatualizado (!ref) que pode fazer o SheetJS ignorar linhas iniciais
+  // em ficheiros com células de título mescladas — recalcula a partir dos endereços reais
+  let maxR = 0, maxC = 0;
+  Object.keys(ws).forEach(addr => {
+    if (addr[0] === '!') return;
+    const cell = XLSX.utils.decode_cell(addr);
+    if (cell.r > maxR) maxR = cell.r;
+    if (cell.c > maxC) maxC = cell.c;
+  });
+  ws['!ref'] = XLSX.utils.encode_range({s:{r:0,c:0}, e:{r:maxR,c:maxC}});
+
+  const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+
+  // ── Formato especial: "Relatório de armazenamento de energia" (só bateria, sem data nem autoconsumo) ──
+  // Distingue-se do relatório completo da instalação por NÃO ter coluna "Autoconsumo" nem "Tempo estatístico"/data
+  const headerRowBat = rows.findIndex(r => {
+    const rowStr = r.join('|').toLowerCase();
+    return rowStr.includes('capacidade de carga') && !rowStr.includes('autoconsumo') && !rowStr.includes('tempo');
+  });
+  if (headerRowBat >= 0) {
+    const headersBat = rows[headerRowBat].map(h => String(h).trim().toLowerCase());
+    const iCargaB = headersBat.findIndex(h => h.includes('capacidade de carga'));
+    const iDescargaB = headersBat.findIndex(h => h.includes('capacidade de descarga'));
+
+    // mês vem do nome do ficheiro (ex: ..._06-2026.xlsx) ou pede ao utilizador via prompt no ficheiro
+    const fnameMatch = file.name.match(/(\d{2})-(\d{4})/);
+    let mesKey;
+    if (fnameMatch) {
+      mesKey = fnameMatch[2] + '-' + fnameMatch[1];
+    } else {
+      mesKey = prompt('Não detetei o mês no nome do ficheiro "' + file.name + '". Indica o mês (formato AAAA-MM):');
+      if (!mesKey) throw new Error('Mês não indicado');
+    }
+
+    let totCarga = 0, totDescarga = 0;
+    for (let r = headerRowBat + 1; r < rows.length; r++) {
+      const row = rows[r];
+      if (!row[0] || String(row[0]).trim() === '') continue;
+      const g = f => { const v = parseFloat(String(row[f] || 0).replace(',','.')); return isNaN(v) ? 0 : v; };
+      totCarga += g(iCargaB);
+      totDescarga += g(iDescargaB);
+    }
+
+    if (!dados[mesKey]) dados[mesKey] = {};
+    dados[mesKey].bat_carga = totCarga;
+    dados[mesKey].bat_descarga = totDescarga;
+
+    msg('Bateria lida (' + mesKey + '): carga ' + totCarga.toFixed(1) + ' kWh, descarga ' + totDescarga.toFixed(1) + ' kWh', 'ok');
+    return;
+  }
+
+  // ── Formato normal: "Relatório da instalação" (com coluna de data) ──
+  // Detectar cabeçalho: procura a linha que contém texto característico dos nomes de coluna
+  // (mais robusto que assumir posição fixa, pois ficheiros com células mescladas no título
+  // podem fazer o SheetJS desalinhar as primeiras linhas)
+  let headerRow = -1;
+  for (let i = 0; i < Math.min(rows.length, 10); i++) {
+    const rowStr = rows[i].join('|').toLowerCase();
+    if (rowStr.includes('autoconsumo') || rowStr.includes('rendimento pv') || (rowStr.includes('tempo') && rowStr.includes('capacidade'))) {
+      headerRow = i; break;
+    }
+  }
+  // Fallback: linha cujo 1º valor parece data/ano
+  if (headerRow < 0) {
+    for (let i = 0; i < rows.length; i++) {
+      if (String(rows[i][0]).match(/tempo|time|data/i) || String(rows[i][0]).match(/2026|2025|2024/)) {
+        headerRow = i; break;
+      }
+    }
+  }
+  if (headerRow < 0) throw new Error('Cabeçalho não encontrado');
+
+  const headers = rows[headerRow].map(h => String(h).trim().toLowerCase());
+  const idx = name => headers.findIndex(h => h.includes(name));
+
+  // Índices das colunas
+  const iRendPV = idx('rendimento pv') >= 0 ? idx('rendimento pv') : idx('rendimento do') >= 0 ? idx('rendimento do') : 6;
+  const iExport = idx('exporta');
+  const iImport = idx('importa');
+  const iConsumo = idx('consumo');
+  const iAutoKwh = idx('autoconsumo (kwh)') >= 0 ? idx('autoconsumo (kwh)') : headers.findIndex((h,i2) => h.includes('autoconsumo') && !h.includes('%') && i2 > 10);
+  const iAutoPct = headers.findIndex(h => h.includes('autoconsumo') && h.includes('%'));
+  const iCarga = idx('carga');
+  const iDescarga = idx('descarga');
+
+  let count = 0;
+  for (let r = headerRow + 1; r < rows.length; r++) {
+    const row = rows[r];
+    const tempo = String(row[0]).trim();
+    if (!tempo || tempo === '') continue;
+
+    // Determinar chave mês
+    let mesKey = '';
+    if (tempo.match(/^\d{4}-\d{2}$/)) {
+      mesKey = tempo; // já é YYYY-MM
+    } else if (tempo.match(/^\d{4}-\d{2}-\d{2}/)) {
+      mesKey = tempo.slice(0, 7); // dia → agrega por mês
+    } else continue;
+
+    const g = f => { const v = parseFloat(String(row[f] || 0).replace(',','.')); return isNaN(v) ? 0 : v; };
+
+    if (!dados[mesKey]) dados[mesKey] = {};
+    const d = dados[mesKey];
+
+    d.solar_kwh       = (d.solar_kwh       || 0) + g(iRendPV);
+    d.exportacao      = (d.exportacao      || 0) + (iExport >= 0 ? g(iExport) : 0);
+    if (iImport >= 0 && !d.rede_kwh) d.rede_kwh_solar = (d.rede_kwh_solar || 0) + g(iImport); // só usa se não houver EDP
+    d.consumo_total   = (d.consumo_total   || 0) + (iConsumo >= 0 ? g(iConsumo) : 0);
+    d.autoconsumo_kwh = (d.autoconsumo_kwh || 0) + (iAutoKwh >= 0 ? g(iAutoKwh) : 0);
+    d.bat_carga       = (d.bat_carga       || 0) + (iCarga >= 0 ? g(iCarga) : 0);
+    d.bat_descarga    = (d.bat_descarga    || 0) + (iDescarga >= 0 ? g(iDescarga) : 0);
+    if (iAutoPct >= 0 && g(iAutoPct) > 0) d._auto_pct_soma = (d._auto_pct_soma || 0) + g(iAutoPct), d._auto_pct_n = (d._auto_pct_n || 0) + 1;
+    count++;
+  }
+
+  // Calcular % autoconsumo final para dados mensais
+  Object.values(dados).forEach(d => {
+    if (d._auto_pct_n) { d.autoconsumo_pct = d._auto_pct_soma / d._auto_pct_n; }
+    else if (d.solar_kwh > 0) { d.autoconsumo_pct = Math.min(100, (d.autoconsumo_kwh || 0) / d.solar_kwh * 100); }
+  });
+
+  msg('FusionSolar lido: ' + count + ' registos em ' + Object.keys(dados).length + ' meses', 'ok');
+}
+
+// ─── Render ──────────────────────────────────────────────────────
+function render() {
+  const df = dadosFiltrados();
+  const meses = Object.keys(df).filter(m => df[m].rede_kwh !== undefined || df[m].solar_kwh !== undefined).sort();
+  buildFiltroAno();
+  renderHistorico();
+  if (meses.length === 0) return;
+
+  document.getElementById('empty').style.display = 'none';
+  document.getElementById('dashboard').style.display = 'block';
+  document.getElementById('kpis').style.display = 'grid';
+
+  // KPIs
+  const totalRede = meses.reduce((s,m) => s + (df[m].rede_kwh || df[m].rede_kwh_solar || 0), 0);
+  const totalSolar = meses.reduce((s,m) => s + (df[m].solar_kwh || 0), 0);
+  const totalBat = meses.reduce((s,m) => s + (df[m].bat_descarga || 0), 0);
+  const totalCusto = meses.reduce((s,m) => s + (df[m].total_com_iva || 0), 0);
+  const autoPcts = meses.filter(m => df[m].autoconsumo_pct).map(m => df[m].autoconsumo_pct);
+  const medAuto = autoPcts.length ? autoPcts.reduce((a,b)=>a+b,0)/autoPcts.length : 0;
+
+  document.getElementById('kpi-rede').textContent = Math.round(totalRede).toLocaleString('pt');
+  document.getElementById('kpi-solar').textContent = Math.round(totalSolar).toLocaleString('pt');
+  document.getElementById('kpi-auto').textContent = medAuto ? medAuto.toFixed(1) + '%' : '—';
+  document.getElementById('kpi-bat').textContent = Math.round(totalBat).toLocaleString('pt');
+  document.getElementById('kpi-custo').textContent = totalCusto ? totalCusto.toFixed(2) + ' €' : '—';
+
+  const labels = meses.map(m => {
+    const [ano, mes] = m.split('-');
+    const nomes = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+    return nomes[parseInt(mes)-1] + ' ' + ano.slice(2);
+  });
+
+  // Gráfico consumo + solar
+  makeChart('chartConsumo', 'bar', labels,
+    [
+      { label: 'Rede EDP (kWh)', data: meses.map(m => df[m].rede_kwh || df[m].rede_kwh_solar || 0), backgroundColor: 'rgba(44,95,138,0.75)', borderColor: '#2c5f8a', borderWidth: 1 },
+      { label: 'Produção Solar (kWh)', data: meses.map(m => df[m].solar_kwh || 0), backgroundColor: 'rgba(139,115,85,0.85)', borderColor: '#8b7355', borderWidth: 1 },
+      { label: 'Autoconsumo (kWh)', data: meses.map(m => df[m].autoconsumo_kwh || 0), backgroundColor: 'rgba(107,39,55,0.7)', borderColor: '#6b2737', borderWidth: 1 },
+    ],
+    {}, meses
+  );
+
+  // Gráfico custo
+  makeChart('chartCusto', 'bar', labels,
+    [{ label: 'Total c/ IVA (€)', data: meses.map(m => df[m].total_com_iva || 0), backgroundColor: 'rgba(140,58,74,0.75)', borderColor: '#8c3a4a', borderWidth: 1 }],
+    { yLabel: '€' }, meses
+  );
+
+  // Gráfico bateria
+  makeChart('chartBat', 'bar', labels,
+    [
+      { label: 'Carga (kWh)', data: meses.map(m => df[m].bat_carga || 0), backgroundColor: 'rgba(90,74,122,0.5)', borderColor: '#5a4a7a', borderWidth: 1 },
+      { label: 'Descarga (kWh)', data: meses.map(m => df[m].bat_descarga || 0), backgroundColor: 'rgba(90,74,122,0.75)', borderColor: '#6a5a8a', borderWidth: 1 },
+    ],
+    {}, meses
+  );
+
+  // Gráfico autoconsumo %
+  makeChart('chartAuto', 'line', labels,
+    [{ label: 'Autoconsumo (%)', data: meses.map(m => df[m].autoconsumo_pct ? df[m].autoconsumo_pct.toFixed(1) : null), borderColor: '#6b2737', backgroundColor: 'rgba(107,39,55,0.12)', fill: true, tension: 0.35, pointRadius: 5 }],
+    { yLabel: '%', suggestedMax: 100 }, meses
+  );
+
+  // Tabela
+  const tbody = document.getElementById('tbodyDados');
+  tbody.innerHTML = '';
+  let totRede=0, totSolar=0, totAutoK=0, totBatC=0, totBatD=0, totExp=0, totConsT=0, totCusto=0, totIva=0;
+  meses.forEach((m, i) => {
+    const d = df[m];
+    const rede = d.rede_kwh || d.rede_kwh_solar || 0;
+    const solar = d.solar_kwh || 0;
+    const autoK = d.autoconsumo_kwh || 0;
+    const autoPct = d.autoconsumo_pct;
+    const batC = d.bat_carga || 0;
+    const batD = d.bat_descarga || 0;
+    const exp = d.exportacao || 0;
+    const consT = d.consumo_total || 0;
+    const custo = d.custo_sem_iva || 0;
+    const iva = d.total_com_iva || 0;
+    totRede+=rede; totSolar+=solar; totAutoK+=autoK; totBatC+=batC; totBatD+=batD; totExp+=exp; totConsT+=consT; totCusto+=custo; totIva+=iva;
+    const tr = document.createElement('tr');
+    tr.className = 'clickable';
+    tr.addEventListener('click', () => abrirModalMes(m));
+    tr.innerHTML = `
+      <td>${labels[i]}</td>
+      <td>${rede ? rede.toFixed(0) : '—'}</td>
+      <td>${solar ? solar.toFixed(1) : '—'}</td>
+      <td>${autoK ? autoK.toFixed(1) : '—'}</td>
+      <td>${autoPct ? autoPct.toFixed(1)+'%' : '—'}</td>
+      <td>${batC ? batC.toFixed(1) : '—'}</td>
+      <td>${batD ? batD.toFixed(1) : '—'}</td>
+      <td>${exp ? exp.toFixed(2) : '—'}</td>
+      <td>${consT ? consT.toFixed(0) : '—'}</td>
+      <td>${custo ? custo.toFixed(2)+' €' : '—'}</td>
+      <td>${iva ? iva.toFixed(2)+' €' : '—'}</td>`;
+    tbody.appendChild(tr);
+  });
+  const trTot = document.createElement('tr');
+  trTot.className = 'total-row';
+  trTot.innerHTML = `
+    <td>TOTAL</td>
+    <td>${totRede.toFixed(0)}</td>
+    <td>${totSolar.toFixed(1)}</td>
+    <td>${totAutoK.toFixed(1)}</td>
+    <td>${medAuto ? medAuto.toFixed(1)+'%' : '—'}</td>
+    <td>${totBatC.toFixed(1)}</td>
+    <td>${totBatD.toFixed(1)}</td>
+    <td>${totExp.toFixed(2)}</td>
+    <td>${totConsT.toFixed(0)}</td>
+    <td>${totCusto.toFixed(2)} €</td>
+    <td>${totIva.toFixed(2)} €</td>`;
+  tbody.appendChild(trTot);
+}
+
+// ─── Modal de dados de origem ──────────────────────────────────────
+function abrirModalMes(mes) {
+  if (!mes || !dados[mes]) return;
+  const d = dados[mes];
+  const campos = [
+    ['rede_kwh', 'Consumo Rede (EDP)', 'kWh'],
+    ['rede_kwh_solar', 'Consumo Rede (EDP)', 'kWh'],
+    ['rede_kwh_historico', 'Consumo Histórico (pré-solar)', 'kWh'],
+    ['solar_kwh', 'Produção Solar', 'kWh'],
+    ['autoconsumo_kwh', 'Autoconsumo', 'kWh'],
+    ['autoconsumo_pct', 'Taxa de Autoconsumo', '%'],
+    ['bat_carga', 'Carga da Bateria', 'kWh'],
+    ['bat_descarga', 'Descarga da Bateria', 'kWh'],
+    ['exportacao', 'Exportação p/ Rede', 'kWh'],
+    ['consumo_total', 'Consumo Total', 'kWh'],
+    ['custo_sem_iva', 'Custo Eletricidade (s/IVA)', '€'],
+    ['total_com_iva', 'Total da Fatura (c/IVA)', '€'],
+    ['taxas_impostos', 'Taxas e Impostos', '€'],
+    ['preco_kwh', 'Preço médio', '€/kWh'],
+  ];
+  let rows = '';
+  campos.forEach(([key, label, unit]) => {
+    const v = d[key];
+    if (v === undefined || v === null || v === '') return;
+    const val = typeof v === 'number' ? v.toLocaleString('pt', { maximumFractionDigits: 4 }) : v;
+    rows += `<tr><td style="padding:6px 8px;color:var(--texto-sec)">${label}</td><td style="padding:6px 8px;text-align:right;font-weight:600">${val} ${unit}</td></tr>`;
+  });
+  if (d.mix_energetico && Object.keys(d.mix_energetico).length) {
+    rows += `<tr><td colspan="2" style="padding:14px 8px 4px;font-weight:700;color:var(--texto-sec);font-size:.72rem;text-transform:uppercase;letter-spacing:.04em">Mix Energético da Fatura</td></tr>`;
+    Object.entries(d.mix_energetico).sort((a, b) => b[1] - a[1]).forEach(([fonte, pct]) => {
+      rows += `<tr><td style="padding:4px 8px;color:var(--texto-sec)">${fonte}</td><td style="padding:4px 8px;text-align:right">${pct.toFixed(2)}%</td></tr>`;
+    });
+  }
+  document.getElementById('modalDadosTitulo').textContent = mesLabel(mes) + ' (' + mes + ')';
+  document.getElementById('modalDadosCorpo').innerHTML = `<table style="width:100%;font-size:.85rem;border-collapse:collapse"><tbody>${rows || '<tr><td>Sem dados detalhados para este mês.</td></tr>'}</tbody></table>`;
+  document.getElementById('modalDados').style.display = 'flex';
+}
+
+// ─── Charts helper ───────────────────────────────────────────────
+function makeChart(id, type, labels, datasets, opts={}, mesesArr=null) {
+  if (charts[id]) charts[id].destroy();
+  const ctx = document.getElementById(id).getContext('2d');
+  charts[id] = new Chart(ctx, {
+    type,
+    data: { labels, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      onClick: (evt, elements) => {
+        if (!elements.length) return;
+        if (mesesArr) {
+          const idx = elements[0].index;
+          abrirModalMes(mesesArr[idx]);
+        } else if (mesSelecionado) {
+          abrirModalMes(mesSelecionado);
+        }
+      },
+      plugins: { legend: { position: 'top', labels: { font: { size: 11 }, boxWidth: 14 } } },
+      scales: {
+        y: {
+          beginAtZero: true,
+          suggestedMax: opts.suggestedMax,
+          ticks: { font: { size: 11 }, callback: v => opts.mixedUnits ? v.toLocaleString('pt') : v.toLocaleString('pt') + (opts.yLabel ? ' ' + opts.yLabel : '') }
+        },
+        x: { ticks: { font: { size: 11 } } }
+      }
+    }
+  });
+  if (document.getElementById(id)) document.getElementById(id).style.cursor = 'pointer';
+}
+
+// ─── Aba Faturação ───────────────────────────────────────────────
+let mesSelecionado = null;
+const NOMES_FONTE = ['Eólica','Hídrica','Gás Natural','Outras Renováveis','Nuclear','Cogeração Fóssil','Carvão','Resíduos Sólidos Urbanos','Cogeração Renovável','Geotermia','Diesel','Fuelóleo'];
+const CORES_FONTE = {
+  'Eólica':'#4caf50','Hídrica':'#2c5f8a','Gás Natural':'#5a4a7a','Outras Renováveis':'#8bc34a',
+  'Nuclear':'#8b7355','Cogeração Fóssil':'#8c3a4a','Carvão':'#424242','Resíduos Sólidos Urbanos':'#795548',
+  'Cogeração Renovável':'#26a69a','Geotermia':'#ff7043','Diesel':'#5d4037','Fuelóleo':'#8d6e63'
+};
+
+function mesLabel(m) {
+  const [ano, mes] = m.split('-');
+  const nomes = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  return nomes[parseInt(mes)-1] + ' ' + ano.slice(2);
+}
+
+function renderFaturacao() {
+  const df = dadosFiltrados();
+  const meses = Object.keys(df).filter(m => df[m].total_com_iva !== undefined).sort();
+  const tbody = document.getElementById('tbodyFat');
+  tbody.innerHTML = '';
+
+  if (meses.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--texto-sec)">Sem faturas EDP carregadas ainda.</td></tr>';
+    return;
+  }
+
+  // Garantir que mesSelecionado é válido para o filtro actual
+  if (!mesSelecionado || !df[mesSelecionado] || !df[mesSelecionado].total_com_iva) {
+    mesSelecionado = meses[meses.length - 1];
+  }
+
+  meses.forEach(m => {
+    const d = df[m];
+    const tr = document.createElement('tr');
+    tr.className = 'clickable';
+    if (m === mesSelecionado) tr.classList.add('selected');
+    tr.innerHTML = `
+      <td>${mesLabel(m)}</td>
+      <td>${d.total_com_iva ? d.total_com_iva.toFixed(2)+' €' : '—'}</td>
+      <td>${d.rede_kwh ? d.rede_kwh.toFixed(0) : '—'}</td>
+      <td>${d.custo_sem_iva ? d.custo_sem_iva.toFixed(2)+' €' : '—'}</td>
+      <td>${d.taxas_impostos != null ? d.taxas_impostos.toFixed(2)+' €' : '—'}</td>
+      <td>${d.preco_kwh ? d.preco_kwh.toFixed(4)+' €' : '—'}</td>`;
+    tr.addEventListener('click', () => {
+      mesSelecionado = m;
+      renderDetalhesFaturacao(df, meses);
+      // atualiza destaque visual
+      tbody.querySelectorAll('tr').forEach(r => r.classList.toggle('selected', r === tr));
+    });
+    tbody.appendChild(tr);
+  });
+
+  renderDetalhesFaturacao(df, meses);
+}
+
+function renderDetalhesFaturacao(df, meses) {
+  const dSel = df[mesSelecionado] || {};
+
+  // a) Detalhe da fatura selecionada
+  document.getElementById('tituloDetFat').textContent = 'Detalhe da Fatura — ' + mesLabel(mesSelecionado);
+  makeChart('chartFatLinha', 'bar', ['Total (€)', 'Eletricidade (€)', 'Impostos (€)', 'Consumo (kWh)'],
+    [{
+      label: mesLabel(mesSelecionado),
+      data: [dSel.total_com_iva||0, dSel.custo_sem_iva||0, dSel.taxas_impostos||0, dSel.rede_kwh||0],
+      backgroundColor: ['rgba(140,58,74,0.75)','rgba(44,95,138,0.7)','rgba(139,115,85,0.75)','rgba(107,39,55,0.7)'],
+      borderColor: ['#8c3a4a','#2c5f8a','#8b7355','#6b2737'], borderWidth: 1
+    }],
+    { mixedUnits: true }
+  );
+
+  // b) Totais de todas as faturas
+  makeChart('chartFatTotal', 'bar', meses.map(mesLabel),
+    [
+      { label: 'Total c/ IVA (€)', data: meses.map(m => df[m].total_com_iva||0), backgroundColor: 'rgba(140,58,74,0.75)', borderColor:'#8c3a4a', borderWidth:1 },
+      { label: 'Eletricidade (€)', data: meses.map(m => df[m].custo_sem_iva||0), backgroundColor: 'rgba(44,95,138,0.7)', borderColor:'#2c5f8a', borderWidth:1 },
+      { label: 'Impostos (€)', data: meses.map(m => df[m].taxas_impostos||0), backgroundColor: 'rgba(139,115,85,0.75)', borderColor:'#8b7355', borderWidth:1 },
+    ],
+    { yLabel: '€' }, meses
+  );
+
+  // c) Mix fatura selecionada
+  document.getElementById('tituloMixLinha').textContent = 'Origem da Eletricidade — ' + mesLabel(mesSelecionado);
+  renderMixChart('chartMixLinha', dSel.mix_energetico || {}, mesSelecionado);
+
+  // d) Mix médio
+  const mixAcc = {}, mixCount = {};
+  meses.forEach(m => {
+    const mx = df[m].mix_energetico;
+    if (!mx) return;
+    Object.entries(mx).forEach(([k,v]) => { mixAcc[k] = (mixAcc[k]||0) + v; mixCount[k] = (mixCount[k]||0) + 1; });
+  });
+  const mixMedia = {};
+  Object.keys(mixAcc).forEach(k => mixMedia[k] = mixAcc[k] / mixCount[k]);
+  renderMixChart('chartMixTotal', mixMedia, null);
+}
+
+function renderMixChart(id, mixObj, mesRef) {
+  const labels = NOMES_FONTE.filter(f => mixObj[f] !== undefined && mixObj[f] > 0);
+  const data = labels.map(f => mixObj[f]);
+  const colors = labels.map(f => CORES_FONTE[f] || '#999');
+
+  if (charts[id]) charts[id].destroy();
+  const ctx = document.getElementById(id).getContext('2d');
+
+  if (labels.length === 0) {
+    charts[id] = new Chart(ctx, {
+      type: 'doughnut',
+      data: { labels: ['Sem dados'], datasets: [{ data: [1], backgroundColor: ['#eee'] }] },
+      options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:false}, tooltip:{enabled:false} } }
+    });
+    return;
+  }
+
+  charts[id] = new Chart(ctx, {
+    type: 'doughnut',
+    data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 2, borderColor: '#fff' }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      onClick: () => { if (mesRef) abrirModalMes(mesRef); },
+      plugins: {
+        legend: { position: 'right', labels: { font: { size: 11 }, boxWidth: 12 } },
+        tooltip: { callbacks: { label: ctx2 => ctx2.label + ': ' + ctx2.parsed.toFixed(2) + '%' } }
+      }
+    }
+  });
+  if (mesRef) ctx.canvas.style.cursor = 'pointer';
+}
+
+// ─── Gráfico Histórico Pré/Pós Solar ──────────────────────────────
+function renderHistorico() {
+  const todosMeses = Object.keys(dados).sort();
+  if (todosMeses.length === 0) return;
+
+  const labels = todosMeses.map(mesLabel);
+  const preSolar = todosMeses.map(m => dados[m].rede_kwh_historico !== undefined ? dados[m].rede_kwh_historico : null);
+  const posSolar = todosMeses.map(m => (dados[m].rede_kwh !== undefined || dados[m].rede_kwh_solar !== undefined) ? (dados[m].rede_kwh || dados[m].rede_kwh_solar || 0) : null);
+
+  makeChart('chartHistorico', 'bar', labels,
+    [
+      { label: 'Antes dos painéis (kWh)', data: preSolar, backgroundColor: 'rgba(140,58,74,0.65)', borderColor: '#8c3a4a', borderWidth: 1 },
+      { label: 'Depois dos painéis (kWh)', data: posSolar, backgroundColor: 'rgba(107,39,55,0.75)', borderColor: '#6b2737', borderWidth: 1 },
+    ],
+    {}, todosMeses
+  );
+}
+
+// ─── Aba ROI ─────────────────────────────────────────────────────
+let investimentoValor = null;
+
+function renderROI() {
+  const inputEl = document.getElementById('inputInvestimento');
+  if (investimentoValor !== null && !inputEl.value) inputEl.value = investimentoValor;
+  const v = parseFloat(inputEl.value);
+  if (!isNaN(v) && v > 0) investimentoValor = v;
+
+  const df = dadosFiltrados();
+  const meses = Object.keys(df).filter(m =>
+    df[m].rede_kwh !== undefined &&
+    df[m].total_com_iva !== undefined &&
+    df[m].autoconsumo_kwh !== undefined
+  ).sort();
+
+  if (!investimentoValor || meses.length === 0) {
+    document.getElementById('kpisRoi').style.display = 'none';
+    document.getElementById('roi-content').style.display = 'none';
+    document.getElementById('roi-empty').style.display = 'block';
+    return;
+  }
+
+  document.getElementById('roi-empty').style.display = 'none';
+  document.getElementById('kpisRoi').style.display = 'grid';
+  document.getElementById('roi-content').style.display = 'block';
+
+  // Preço médio €/kWh: usar custo_sem_iva / rede_kwh de cada fatura (ou média geral como fallback)
+  const precosValidos = meses.filter(m => df[m].custo_sem_iva && df[m].rede_kwh).map(m => df[m].custo_sem_iva / df[m].rede_kwh);
+  const precoMedioGeral = precosValidos.length ? precosValidos.reduce((a,b)=>a+b,0)/precosValidos.length : 0.20;
+
+  let poupancaAcumulada = 0;
+  const linhas = [];
+
+  meses.forEach(m => {
+    const d = df[m];
+    const rede = d.rede_kwh || 0;
+    const autoconsumo = d.autoconsumo_kwh || 0;
+    const consumoTotal = rede + autoconsumo;
+    const precoKwh = (d.custo_sem_iva && rede) ? (d.custo_sem_iva / rede) : precoMedioGeral;
+    // Custo real pago (com IVA, total da fatura)
+    const custoReal = d.total_com_iva || 0;
+    // Custo estimado sem solar: consumo total ao preço/kWh, com IVA aproximado de 23% sobre a parte de energia (simplificação)
+    const custoSemSolarSemIva = consumoTotal * precoKwh;
+    const custoSemSolar = custoSemSolarSemIva * 1.23;
+    const poupanca = custoSemSolar - custoReal;
+    poupancaAcumulada += poupanca;
+
+    linhas.push({ mes: m, rede, autoconsumo, consumoTotal, precoKwh, custoReal, custoSemSolar, poupanca, poupancaAcumulada });
+  });
+
+  const roiPct = (poupancaAcumulada / investimentoValor) * 100;
+  const numMeses = meses.length;
+  const poupancaMediaMensal = poupancaAcumulada / numMeses;
+  const mesesParaPayback = poupancaMediaMensal > 0 ? investimentoValor / poupancaMediaMensal : Infinity;
+  const anosPayback = mesesParaPayback / 12;
+
+  document.getElementById('roi-invest').textContent = investimentoValor.toLocaleString('pt', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' €';
+  document.getElementById('roi-poupanca').textContent = poupancaAcumulada.toLocaleString('pt', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' €';
+  document.getElementById('roi-pct').textContent = roiPct.toFixed(1) + '%';
+  document.getElementById('roi-payback').textContent = isFinite(anosPayback) ? anosPayback.toFixed(1) + ' anos' : '—';
+
+  const labels = linhas.map(l => mesLabel(l.mes));
+  const mesesRoi = linhas.map(l => l.mes);
+
+  // Gráfico mensal: custo real vs custo sem solar
+  makeChart('chartRoiMensal', 'bar', labels,
+    [
+      { label: 'Custo Real (€)', data: linhas.map(l => l.custoReal), backgroundColor: 'rgba(107,39,55,0.75)', borderColor: '#6b2737', borderWidth: 1 },
+      { label: 'Custo Sem Solar (€)', data: linhas.map(l => l.custoSemSolar), backgroundColor: 'rgba(140,58,74,0.65)', borderColor: '#8c3a4a', borderWidth: 1 },
+    ],
+    { yLabel: '€' }, mesesRoi
+  );
+
+  // Gráfico acumulado: poupança acumulada vs linha de investimento
+  if (charts['chartRoiAcumulado']) charts['chartRoiAcumulado'].destroy();
+  const ctxAcc = document.getElementById('chartRoiAcumulado').getContext('2d');
+  charts['chartRoiAcumulado'] = new Chart(ctxAcc, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Poupança Acumulada (€)', data: linhas.map(l => l.poupancaAcumulada), borderColor: '#6b2737', backgroundColor: 'rgba(107,39,55,0.12)', fill: true, tension: 0.3, pointRadius: 4 },
+        { label: 'Investimento (€)', data: linhas.map(() => investimentoValor), borderColor: '#8c3a4a', borderDash: [6,4], pointRadius: 0, fill: false }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      onClick: (evt, elements) => { if (elements.length) abrirModalMes(mesesRoi[elements[0].index]); },
+      plugins: { legend: { position: 'top', labels: { font: { size: 11 }, boxWidth: 14 } } },
+      scales: {
+        y: { beginAtZero: true, ticks: { font: { size: 11 }, callback: v2 => v2.toLocaleString('pt') + ' €' } },
+        x: { ticks: { font: { size: 11 } } }
+      }
+    }
+  });
+  ctxAcc.canvas.style.cursor = 'pointer';
+
+  // Tabela detalhe
+  const tbody = document.getElementById('tbodyRoi');
+  tbody.innerHTML = '';
+  linhas.forEach(l => {
+    const tr = document.createElement('tr');
+    tr.className = 'clickable';
+    tr.addEventListener('click', () => abrirModalMes(l.mes));
+    tr.innerHTML = `
+      <td>${mesLabel(l.mes)}</td>
+      <td>${l.rede.toFixed(0)}</td>
+      <td>${l.autoconsumo.toFixed(1)}</td>
+      <td>${l.consumoTotal.toFixed(1)}</td>
+      <td>${l.precoKwh.toFixed(4)} €</td>
+      <td>${l.custoReal.toFixed(2)} €</td>
+      <td>${l.custoSemSolar.toFixed(2)} €</td>
+      <td style="color:${l.poupanca>=0?'var(--verde)':'var(--custo)'};font-weight:600">${l.poupanca.toFixed(2)} €</td>`;
+    tbody.appendChild(tr);
+  });
+  const trTot = document.createElement('tr');
+  trTot.className = 'total-row';
+  const totReal = linhas.reduce((s,l)=>s+l.custoReal,0);
+  const totSemSolar = linhas.reduce((s,l)=>s+l.custoSemSolar,0);
+  trTot.innerHTML = `
+    <td>TOTAL</td><td>—</td><td>—</td><td>—</td><td>—</td>
+    <td>${totReal.toFixed(2)} €</td>
+    <td>${totSemSolar.toFixed(2)} €</td>
+    <td>${poupancaAcumulada.toFixed(2)} €</td>`;
+  tbody.appendChild(trTot);
+}
+
+// ─── Tabs ────────────────────────────────────────────────────────
+function showTab(tab) {
+  ['graficos','tabela','faturacao','roi','preferencias'].forEach(t => {
+    document.getElementById('tab-'+t).style.display = t === tab ? 'block' : 'none';
+  });
+  document.querySelectorAll('.tab').forEach(el => {
+    const t = el.getAttribute('onclick')?.match(/showTab\('(\w+)'\)/)?.[1];
+    if (t) el.classList.toggle('active', t === tab);
+  });
+  if (tab === 'faturacao') renderFaturacao();
+  if (tab === 'roi') renderROI();
+  if (tab === 'preferencias') { setupDropZone('dzEdp', processEdpFiles); setupDropZone('dzSolar', processSolarFiles); }
+}
+
+// ─── Exportar dados para código (persistência manual) ─────────────
+function exportarDadosParaCodigo() {
+  const meses = Object.keys(dados).filter(m =>
+    dados[m].total_com_iva !== undefined || dados[m].rede_kwh !== undefined
+  ).sort();
+
+  if (meses.length === 0) {
+    msg('Não há dados de faturas para exportar.', 'err');
+    return;
+  }
+
+  let out = 'const FATURAS_EDP_HARDCODED = {\n';
+  meses.forEach(m => {
+    const d = dados[m];
+    const mix = d.mix_energetico || {};
+    const mixStr = Object.entries(mix).map(([k,v]) => `'${k}':${v}`).join(', ');
+    out += `  '${m}': { rede_kwh:${d.rede_kwh ?? 'null'}, custo_sem_iva:${d.custo_sem_iva ?? 'null'}, total_com_iva:${d.total_com_iva ?? 'null'}, taxas_impostos:${d.taxas_impostos ?? 'null'}, preco_kwh:${d.preco_kwh ?? 'null'}, mix_energetico:{${mixStr}} },\n`;
+  });
+  out += '};';
+
+  document.getElementById('exportTextarea').value = out;
+  document.getElementById('modalExport').style.display = 'flex';
+}
+
+function copiarExport() {
+  const ta = document.getElementById('exportTextarea');
+  ta.select();
+  navigator.clipboard.writeText(ta.value).then(() => msg('Copiado para a área de transferência!', 'ok'));
+}
+
+function exportarSolarParaCodigo() {
+  const campos = ['solar_kwh','autoconsumo_kwh','autoconsumo_pct','exportacao','bat_carga','bat_descarga'];
+  const meses = Object.keys(dados).filter(m =>
+    campos.some(c => dados[m][c] !== undefined)
+  ).sort();
+
+  if (meses.length === 0) {
+    msg('Não há dados solares carregados ainda. Carrega os ficheiros FusionSolar primeiro.', 'err');
+    return;
+  }
+
+  let out = 'const SOLAR_HARDCODED = {\n';
+  meses.forEach(m => {
+    const d = dados[m];
+    const partes = [];
+    if (d.solar_kwh !== undefined)       partes.push(`solar_kwh:${d.solar_kwh}`);
+    if (d.autoconsumo_kwh !== undefined) partes.push(`autoconsumo_kwh:${d.autoconsumo_kwh}`);
+    if (d.autoconsumo_pct !== undefined) partes.push(`autoconsumo_pct:${d.autoconsumo_pct}`);
+    if (d.exportacao !== undefined)      partes.push(`exportacao:${d.exportacao}`);
+    if (d.bat_carga !== undefined)       partes.push(`bat_carga:${d.bat_carga}`);
+    if (d.bat_descarga !== undefined)    partes.push(`bat_descarga:${d.bat_descarga}`);
+    out += `  '${m}': { ${partes.join(', ')} },\n`;
+  });
+  out += '};\n';
+  out += '\nfunction carregarSolarHardcoded() {\n';
+  out += '  Object.entries(SOLAR_HARDCODED).forEach(([mes, d]) => {\n';
+  out += '    if (!dados[mes]) dados[mes] = {};\n';
+  out += '    Object.assign(dados[mes], d);\n';
+  out += '  });\n';
+  out += '}\n';
+  out += 'carregarSolarHardcoded();\n';
+
+  document.getElementById('exportSolarTextarea').value = out;
+  document.getElementById('modalExportSolar').style.display = 'flex';
+}
+
+function copiarExportSolar() {
+  const ta = document.getElementById('exportSolarTextarea');
+  ta.select();
+  navigator.clipboard.writeText(ta.value).then(() => msg('Copiado para a área de transferência!', 'ok'));
+}
+
+const LOGO_SUBLINHA_B64 = 'data:image/png;base64,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';
+
+// ─── Relatório Geral da Instalação ───────────────────────────────
+function gerarRelatorioGeral() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  const M = 14, RM = 196;
+  let y = 0;
+
+  // Cores Sublinha Conta
+  const BORDO = [107, 39, 55];
+  const CINZA = [90, 90, 90];
+  const CINZA_CLARO = [222, 222, 222];
+  const BRANCO = [255, 255, 255];
+  const BG_PALE = [245, 234, 236];
+
+  const checkPage = () => { if (y > 272) { doc.addPage(); y = 20; } };
+  const nl = (n=6) => { y += n; checkPage(); };
+
+  const titulo = (t) => {
+    checkPage();
+    doc.setFillColor(...BORDO); doc.rect(M, y, RM-M, 7.5, 'F');
+    doc.setFontSize(11); doc.setTextColor(...BRANCO); doc.setFont(undefined,'bold');
+    doc.text(t, M+3, y+5.5); doc.setFont(undefined,'normal');
+    y += 11;
+  };
+  const subtitulo = (t) => {
+    checkPage();
+    doc.setFontSize(9.5); doc.setTextColor(...BORDO); doc.setFont(undefined,'bold');
+    doc.text(t, M, y); doc.setFont(undefined,'normal');
+    doc.setDrawColor(...CINZA_CLARO); doc.line(M, y+2, RM, y+2);
+    y += 7;
+  };
+  const linha = (label, valor, destaque=false) => {
+    checkPage();
+    if (destaque) doc.setFillColor(...BG_PALE);
+    else doc.setFillColor(y%13<7 ? 249 : 255, y%13<7 ? 249 : 255, y%13<7 ? 249 : 255);
+    doc.rect(M, y-3.5, RM-M, 6.2, 'F');
+    doc.setFontSize(9); doc.setTextColor(...CINZA); doc.text(label, M+2, y);
+    doc.setTextColor(destaque ? BORDO[0] : 30, destaque ? BORDO[1] : 30, destaque ? BORDO[2] : 30);
+    doc.setFont(undefined, destaque ? 'bold' : 'normal');
+    doc.text(String(valor), RM-2, y, { align: 'right' });
+    doc.setFont(undefined,'normal');
+    y += 6.5;
+  };
+  const fmt = (n, dec=2) => n != null && !isNaN(n) ? Number(n).toLocaleString('pt-PT',{minimumFractionDigits:dec,maximumFractionDigits:dec}) : '—';
+  const fmtK = n => fmt(n, 0);
+
+  // ── CABEÇALHO: fundo branco com logo, depois banda bordô com texto ──
+  // Área branca para o logo
+  doc.setFillColor(255,255,255);
+  doc.rect(0, 0, 210, 26, 'F');
+  // Logo centrado em fundo branco, proporção original mantida
+  try {
+    // Imagem original ~322x90px → ratio ~3.58. Para altura 18mm → largura ~64mm
+    doc.addImage(LOGO_SUBLINHA_B64, 'PNG', 73, 4, 64, 18);
+  } catch(e) {}
+  // Banda bordô com texto
+  doc.setFillColor(...BORDO);
+  doc.rect(0, 26, 210, 30, 'F');
+  doc.setFontSize(14); doc.setTextColor(...BRANCO); doc.setFont(undefined,'bold');
+  doc.text('Relatório Geral da Instalação Solar', 105, 37, { align: 'center' });
+  doc.setFontSize(8.5); doc.setFont(undefined,'normal'); doc.setTextColor(215, 185, 192);
+  doc.text('Sublinha Conta, Lda  ·  Rua do Pinhal Novo, 15, Albarraque, Rio de Mouro', 105, 46, { align: 'center' });
+  doc.text('Gerado em: ' + new Date().toLocaleDateString('pt-PT', {day:'2-digit',month:'long',year:'numeric'}), 105, 53, { align: 'center' });
+  y = 64;
+
+  // ── 1. FICHA TÉCNICA ──
+  titulo('1. Ficha Técnica da Instalação');
+  subtitulo('Painéis Fotovoltaicos');
+  linha('Fabricante / Modelo', 'JA Solar JAM72S20-455/MR');
+  linha('Número de painéis', '14 unidades');
+  linha('Potência por painel', '455 Wp');
+  linha('Potência total instalada', '6.370 Wp (6,37 kWp)');
+  linha('Orientação estimada', 'Sul / Sudoeste');
+  linha('Inclinação estimada', '~15–20° (montagem em telhado plano)');
+  nl(3);
+  subtitulo('Inversor');
+  linha('Fabricante / Modelo', 'Huawei SUN2000-6KTL-M1');
+  linha('Potência nominal', '6 kW');
+  linha('Tipo', 'String inversor com MPPT');
+  nl(3);
+  subtitulo('Sistema de Armazenamento (Bateria)');
+  linha('Fabricante / Modelo', 'Huawei LUNA2000-5-E0 × 2');
+  linha('Capacidade total', '10 kWh (2 módulos × 5 kWh)');
+  linha('Tecnologia', 'Lítio-ferro-fosfato (LFP)');
+  linha('Profundidade de descarga', '~90% (≈ 9 kWh utilizáveis)');
+  nl(3);
+  subtitulo('Instalação');
+  linha('Instalador', 'LEFE, Lda');
+  linha('Data de entrada em funcionamento', 'Agosto 2022');
+  linha('Investimento total', '14.805,23 €', true);
+  nl(4);
+
+  // ── 2. PRODUÇÃO E CONSUMO POR ANO ──
+  titulo('2. Produção Solar e Consumo da Rede — Por Ano');
+  const anos = [...new Set(Object.keys(dados).map(m => m.split('-')[0]))].filter(a => a >= '2022').sort();
+
+  // Cabeçalho tabela
+  doc.setFillColor(140, 58, 74); doc.rect(M, y-3, RM-M, 7, 'F');
+  doc.setFontSize(8); doc.setTextColor(...BRANCO); doc.setFont(undefined,'bold');
+  const xs = [M+2, 42, 67, 95, 126, 148, 170];
+  ['Ano','Rede (kWh)','Solar (kWh)','Autocons. (kWh)','Auto. (%)','Bat.Desc. (kWh)','Custo (€)'].forEach((h,i) => doc.text(h, xs[i], y+1.5));
+  doc.setFont(undefined,'normal'); y += 7;
+
+  let totRede=0,totSolar=0,totAuto=0,totBatD=0,totCusto=0;
+  anos.forEach((ano,ai) => {
+    const mesesAno = Object.keys(dados).filter(m => m.startsWith(ano)).sort();
+    const rede = mesesAno.reduce((s,m) => s+(dados[m].rede_kwh||0),0);
+    const solar = mesesAno.reduce((s,m) => s+(dados[m].solar_kwh||0),0);
+    const auto = mesesAno.reduce((s,m) => s+(dados[m].autoconsumo_kwh||0),0);
+    const autoP = mesesAno.filter(m=>dados[m].autoconsumo_pct).map(m=>dados[m].autoconsumo_pct);
+    const autoPct = autoP.length ? autoP.reduce((a,b)=>a+b,0)/autoP.length : null;
+    const batD = mesesAno.reduce((s,m) => s+(dados[m].bat_descarga||0),0);
+    const custo = mesesAno.reduce((s,m) => s+(dados[m].total_com_iva||0),0);
+    totRede+=rede; totSolar+=solar; totAuto+=auto; totBatD+=batD; totCusto+=custo;
+    checkPage();
+    doc.setFillColor(ai%2===0 ? 249 : 255, ai%2===0 ? 246 : 255, ai%2===0 ? 247 : 255);
+    doc.rect(M, y-3, RM-M, 6.5, 'F');
+    doc.setFontSize(8.5); doc.setTextColor(30,30,30);
+    [ano, fmtK(rede), fmtK(solar), fmtK(auto), autoPct ? fmt(autoPct,1)+'%' : '—', fmtK(batD), custo ? fmt(custo)+' €' : '—'].forEach((v,i) => doc.text(v, xs[i], y+0.8));
+    y += 6.5;
+  });
+  // Linha total
+  checkPage();
+  doc.setFillColor(...BORDO); doc.rect(M, y-3, RM-M, 7, 'F');
+  doc.setFontSize(8.5); doc.setTextColor(...BRANCO); doc.setFont(undefined,'bold');
+  ['TOTAL', fmtK(totRede), fmtK(totSolar), fmtK(totAuto), '—', fmtK(totBatD), fmt(totCusto)+' €'].forEach((v,i) => doc.text(v, xs[i], y+1.5));
+  doc.setFont(undefined,'normal'); y += 11;
+
+  // ── 3. ANÁLISE DE CUSTOS ──
+  titulo('3. Análise de Custos e Poupança');
+  const mesesComTudo = Object.keys(dados).filter(m =>
+    dados[m].rede_kwh !== undefined && dados[m].total_com_iva !== undefined && dados[m].autoconsumo_kwh !== undefined
+  ).sort();
+  const precosV = mesesComTudo.filter(m => dados[m].custo_sem_iva && dados[m].rede_kwh).map(m => dados[m].custo_sem_iva/dados[m].rede_kwh);
+  const precoMed = precosV.length ? precosV.reduce((a,b)=>a+b,0)/precosV.length : 0.20;
+  let custoReal=0, semSolar=0, semBat=0;
+  mesesComTudo.forEach(m => {
+    const d = dados[m];
+    const rede = d.rede_kwh||0, auto = d.autoconsumo_kwh||0, batD = d.bat_descarga||0;
+    const p = (d.custo_sem_iva && rede) ? d.custo_sem_iva/rede : precoMed;
+    custoReal += d.total_com_iva||0;
+    semSolar += (rede+auto)*p*1.23;
+    semBat += (rede+batD)*p*1.23;
+  });
+  const poupSolar = semSolar - custoReal;
+  const poupBat = semBat - custoReal;
+
+  subtitulo('Custos Acumulados (período com dados completos)');
+  linha('Custo real pago à EDP', fmt(custoReal)+' €', true);
+  linha('Custo estimado SEM sistema solar', fmt(semSolar)+' €');
+  linha('Custo estimado SEM bateria (só painéis)', fmt(semBat)+' €');
+  nl(2);
+  subtitulo('Poupança Gerada pelo Sistema');
+  linha('Poupança total (painéis + bateria)', fmt(poupSolar)+' €', true);
+  linha('Contribuição estimada da bateria', fmt(poupBat)+' €');
+  linha('Preço médio €/kWh das faturas', fmt(precoMed,4)+' €/kWh');
+  nl(4);
+
+  // ── 4. ROI E PAYBACK ──
+  titulo('4. Retorno do Investimento (ROI)');
+  const investimento = 14805.23;
+  const roiPct = (poupSolar/investimento)*100;
+  const numMeses = mesesComTudo.length;
+  const poupMensal = poupSolar/numMeses;
+  const mesesPB = poupMensal > 0 ? investimento/poupMensal : null;
+  const dataInicio = new Date(2022,7,1);
+  const dataPayback = mesesPB ? new Date(dataInicio.getFullYear(), dataInicio.getMonth()+Math.round(mesesPB), 1) : null;
+  const mesesFalta = mesesPB ? Math.max(0, Math.round(mesesPB - numMeses)) : null;
+
+  subtitulo('Investimento e Retorno');
+  linha('Investimento total na instalação', '14.805,23 €');
+  linha('Poupança acumulada até à data', fmt(poupSolar)+' €', true);
+  linha('ROI atual', fmt(roiPct,1)+'%', true);
+  linha('Poupança média mensal', fmt(poupMensal)+' €/mês');
+  nl(2);
+  subtitulo('Projeção de Payback');
+  linha('Meses restantes para retorno total', mesesFalta !== null ? mesesFalta+' meses' : '—');
+  linha('Data estimada de retorno total', dataPayback ? dataPayback.toLocaleDateString('pt-PT',{month:'long',year:'numeric'}) : '—', true);
+  linha('Prazo total de payback (desde instalação)', mesesPB ? fmt(mesesPB/12,1)+' anos' : '—');
+  nl(4);
+
+  // ── 5. NOTAS ──
+  titulo('5. Notas e Pressupostos');
+  doc.setFontSize(8.5); doc.setTextColor(...CINZA);
+  [
+    '• O custo estimado sem solar é calculado com base no preço médio €/kWh das faturas disponíveis, aplicado ao consumo total (rede + autoconsumo).',
+    '• A estimativa sem bateria assume que a energia descarregada pela bateria seria comprada à rede ao mesmo preço.',
+    '• Os valores de 2022 cobrem parte do ano (instalação em agosto). Dados de 2023 em diante são anuais completos.',
+    '• Orientação dos painéis estimada por imagem de satélite: Sul/Sudoeste, inclinação ~15-20°.',
+    '• Capacidade de bateria: 10 kWh nominais (Huawei LUNA2000, LFP), profundidade de descarga típica ~90%.',
+    '• Relatório gerado automaticamente. Não substitui análise técnica certificada.',
+  ].forEach(n => { checkPage(); doc.text(n, M, y, { maxWidth: RM-M }); y += 5.5; });
+
+  // ── RODAPÉ TODAS AS PÁGINAS ──
+  const totalPages = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    doc.setFillColor(...BORDO); doc.rect(0, 286, 210, 12, 'F');
+    doc.setFontSize(7.5); doc.setTextColor(...BRANCO);
+    doc.text('Sublinha Conta, Lda  ·  Sistema Fotovoltaico  ·  Confidencial', M, 293);
+    doc.text('Página ' + i + ' de ' + totalPages, RM, 293, { align: 'right' });
+    // Linha decorativa bordô clara no topo (exceto pág 1)
+    if (i > 1) {
+      doc.setFillColor(140,58,74); doc.rect(0,0,210,3,'F');
+    }
+  }
+
+  doc.save('relatorio_geral_sublinha_conta.pdf');
+}
+
+
+
+// ─── Relatórios PDF ─────────────────────────────────────────────
+function gerarRelatorioMensal() {
+  if (!mesSelecionado || !dados[mesSelecionado]) {
+    msg('Seleciona uma fatura na tabela primeiro.', 'err');
+    return;
+  }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  const d = dados[mesSelecionado];
+  const titulo = 'Relatório Mensal · ' + mesLabel(mesSelecionado);
+
+  doc.setFontSize(18); doc.setTextColor(45,122,58);
+  doc.text(titulo, 14, 20);
+  doc.setFontSize(10); doc.setTextColor(90,122,90);
+  doc.text('Sublinha Conta · Energia', 14, 27);
+
+  doc.setDrawColor(221,232,221); doc.line(14, 32, 196, 32);
+
+  let y = 44;
+  doc.setFontSize(12); doc.setTextColor(26,46,26);
+  doc.text('Resumo da Fatura', 14, y); y += 8;
+
+  doc.setFontSize(10);
+  const linhas = [
+    ['Período', mesLabel(mesSelecionado)],
+    ['Consumo da Rede', (d.rede_kwh ?? '—') + ' kWh'],
+    ['Preço por kWh', (d.preco_kwh ? d.preco_kwh.toFixed(4) : '—') + ' €'],
+    ['Custo Eletricidade (sem IVA)', (d.custo_sem_iva ? d.custo_sem_iva.toFixed(2) : '—') + ' €'],
+    ['Taxas e Impostos', (d.taxas_impostos !== undefined ? d.taxas_impostos.toFixed(2) : '—') + ' €'],
+    ['Total a Pagar (com IVA)', (d.total_com_iva ? d.total_com_iva.toFixed(2) : '—') + ' €'],
+  ];
+  if (d.solar_kwh !== undefined) linhas.push(['Produção Solar', d.solar_kwh.toFixed(1) + ' kWh']);
+  if (d.autoconsumo_kwh !== undefined) linhas.push(['Autoconsumo', d.autoconsumo_kwh.toFixed(1) + ' kWh']);
+  if (d.bat_descarga !== undefined) linhas.push(['Descarga da Bateria', d.bat_descarga.toFixed(1) + ' kWh']);
+
+  linhas.forEach(([label, val]) => {
+    doc.setTextColor(90,122,90); doc.text(label, 14, y);
+    doc.setTextColor(26,46,26); doc.text(String(val), 120, y);
+    y += 7;
+  });
+
+  if (d.mix_energetico && Object.keys(d.mix_energetico).length) {
+    y += 6;
+    doc.setFontSize(12); doc.setTextColor(26,46,26);
+    doc.text('Origem da Eletricidade', 14, y); y += 8;
+    doc.setFontSize(10);
+    Object.entries(d.mix_energetico).sort((a,b) => b[1]-a[1]).forEach(([fonte, pct]) => {
+      doc.setTextColor(90,122,90); doc.text(fonte, 14, y);
+      doc.setTextColor(26,46,26); doc.text(pct.toFixed(2) + '%', 120, y);
+      y += 6;
+    });
+  }
+
+  doc.setFontSize(8); doc.setTextColor(150,150,150);
+  doc.text('Gerado automaticamente · Painel de Energia Sublinha Conta', 14, 285);
+
+  doc.save('relatorio_' + mesSelecionado + '.pdf');
+}
+
+function gerarRelatorioAnual() {
+  const meses = Object.keys(dados).filter(m => dados[m].total_com_iva !== undefined).sort();
+  if (meses.length === 0) {
+    msg('Sem faturas carregadas para gerar relatório.', 'err');
+    return;
+  }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  doc.setFontSize(18); doc.setTextColor(45,122,58);
+  doc.text('Relatório Anual de Energia', 14, 20);
+  doc.setFontSize(10); doc.setTextColor(90,122,90);
+  doc.text('Sublinha Conta · ' + mesLabel(meses[0]) + ' a ' + mesLabel(meses[meses.length-1]), 14, 27);
+  doc.setDrawColor(221,232,221); doc.line(14, 32, 196, 32);
+
+  // Resumo totais
+  const totRede = meses.reduce((s,m) => s + (dados[m].rede_kwh||0), 0);
+  const totCusto = meses.reduce((s,m) => s + (dados[m].total_com_iva||0), 0);
+  const totSolar = meses.filter(m=>dados[m].solar_kwh).reduce((s,m) => s + (dados[m].solar_kwh||0), 0);
+  const totAuto = meses.filter(m=>dados[m].autoconsumo_kwh).reduce((s,m) => s + (dados[m].autoconsumo_kwh||0), 0);
+
+  let y = 44;
+  doc.setFontSize(12); doc.setTextColor(26,46,26);
+  doc.text('Resumo Geral', 14, y); y += 8;
+  doc.setFontSize(10);
+  const resumo = [
+    ['Nº de Faturas', String(meses.length)],
+    ['Consumo Total da Rede', totRede.toFixed(0) + ' kWh'],
+    ['Custo Total (com IVA)', totCusto.toFixed(2) + ' €'],
+    ['Custo Médio Mensal', (totCusto/meses.length).toFixed(2) + ' €'],
+  ];
+  if (totSolar > 0) resumo.push(['Produção Solar Total', totSolar.toFixed(1) + ' kWh']);
+  if (totAuto > 0) resumo.push(['Autoconsumo Total', totAuto.toFixed(1) + ' kWh']);
+
+  resumo.forEach(([label, val]) => {
+    doc.setTextColor(90,122,90); doc.text(label, 14, y);
+    doc.setTextColor(26,46,26); doc.text(String(val), 120, y);
+    y += 7;
+  });
+
+  // Tabela mensal
+  y += 8;
+  doc.setFontSize(12); doc.setTextColor(26,46,26);
+  doc.text('Detalhe Mensal', 14, y); y += 8;
+
+  doc.setFontSize(8);
+  const headers = ['Mês', 'Rede (kWh)', 'Total (€)', 'Eletric. (€)', 'Impostos (€)'];
+  const colX = [14, 50, 90, 125, 160];
+  doc.setTextColor(255,255,255); doc.setFillColor(45,122,58);
+  doc.rect(14, y-5, 182, 7, 'F');
+  headers.forEach((h,i) => doc.text(h, colX[i], y));
+  y += 7;
+
+  doc.setTextColor(26,46,26);
+  meses.forEach((m, idx) => {
+    if (y > 275) { doc.addPage(); y = 20; }
+    const d = dados[m];
+    if (idx % 2 === 0) { doc.setFillColor(232,245,233); doc.rect(14, y-5, 182, 7, 'F'); }
+    doc.text(mesLabel(m), colX[0], y);
+    doc.text(d.rede_kwh !== undefined ? d.rede_kwh.toFixed(0) : '—', colX[1], y);
+    doc.text(d.total_com_iva !== undefined ? d.total_com_iva.toFixed(2) : '—', colX[2], y);
+    doc.text(d.custo_sem_iva !== undefined ? d.custo_sem_iva.toFixed(2) : '—', colX[3], y);
+    doc.text(d.taxas_impostos !== undefined ? d.taxas_impostos.toFixed(2) : '—', colX[4], y);
+    y += 7;
+  });
+
+  doc.setFontSize(8); doc.setTextColor(150,150,150);
+  doc.text('Gerado automaticamente · Painel de Energia Sublinha Conta', 14, 290);
+
+  doc.save('relatorio_anual_' + meses[0] + '_a_' + meses[meses.length-1] + '.pdf');
+}
+
+// ─── Arranque: mostra dados hardcoded imediatamente, sem precisar de upload ───
+buildFiltroAno();
+render();
+renderFaturacao();
+</script>
+</body>
+</html>
