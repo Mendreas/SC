@@ -451,6 +451,19 @@
         </label>
       </div>
 
+      <div class="section-title" style="margin-top:8px">📁 Importar de Pasta</div>
+      <div class="card" style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap">
+        <div style="flex:1;min-width:200px">
+          <p style="font-size:.82rem;color:var(--texto-sec);margin-bottom:12px">
+            Seleciona uma pasta (e sub-pastas) para importar automaticamente todos os ficheiros Excel do FusionSolar e as faturas EDP que estiverem lá dentro.
+          </p>
+          <button onclick="selecionarPasta()" id="btnPasta" style="padding:10px 22px;background:var(--verde);color:white;border:none;border-radius:8px;font-weight:600;cursor:pointer;font-size:.9rem">
+            📂 Selecionar Pasta…
+          </button>
+          <div id="pastaLog" style="margin-top:10px;font-size:.8rem;color:var(--texto-sec);line-height:1.6;display:none"></div>
+        </div>
+      </div>
+
       <div class="section-title" style="margin-top:8px">Exportação para Código</div>
       <div class="card" style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
         <div style="flex:1;min-width:200px">
@@ -517,11 +530,11 @@ const FATURAS_EDP_HARDCODED = {
   '2023-12': { rede_kwh:1110, custo_sem_iva:193.19, total_com_iva:241.8, taxas_impostos:48.61, preco_kwh:0.207, mix_energetico:{'Nuclear':6.73, 'Eólica':7.42, 'Hídrica':18.88, 'Cogeração Fóssil':2.65, 'Cogeração Renovável':0.09, 'Outras Renováveis':4.58, 'Resíduos Sólidos Urbanos':0.91, 'Gás Natural':57.92, 'Carvão':0.82} },
   '2024-01': { rede_kwh:1144, custo_sem_iva:228.92, total_com_iva:285.96, taxas_impostos:57.04, preco_kwh:0.207, mix_energetico:{} },
   '2024-03': { rede_kwh:431, custo_sem_iva:106.96, total_com_iva:135.2, taxas_impostos:28.24, preco_kwh:0.2063, mix_energetico:{} },
-  '2024-04': { rede_kwh:null, custo_sem_iva:null, total_com_iva:58.94, taxas_impostos:null, preco_kwh:null, mix_energetico:{} },
+  '2024-04': { rede_kwh:431, custo_sem_iva:106.96, total_com_iva:135.2, taxas_impostos:28.24, preco_kwh:0.2063, mix_energetico:{} },
   '2024-06': { rede_kwh:173, custo_sem_iva:61.31, total_com_iva:78.73, taxas_impostos:17.42, preco_kwh:0.2323, mix_energetico:{} },
   '2024-07': { rede_kwh:173, custo_sem_iva:61.31, total_com_iva:78.73, taxas_impostos:17.42, preco_kwh:0.2323, mix_energetico:{} },
   '2024-09': { rede_kwh:385, custo_sem_iva:109.57, total_com_iva:138.36, taxas_impostos:28.79, preco_kwh:0.2323, mix_energetico:{} },
-  '2024-10': { rede_kwh:null, custo_sem_iva:null, total_com_iva:165.12, taxas_impostos:null, preco_kwh:null, mix_energetico:{} },
+  '2024-10': { rede_kwh:385, custo_sem_iva:109.57, total_com_iva:138.36, taxas_impostos:28.79, preco_kwh:0.2323, mix_energetico:{} },
   '2024-11': { rede_kwh:700, custo_sem_iva:181.28, total_com_iva:226.94, taxas_impostos:45.66, preco_kwh:0.2323, mix_energetico:{'Nuclear':10.22, 'Carvão':0.55, 'Gás Natural':25.31, 'Cogeração Fóssil':3.04, 'Resíduos Sólidos Urbanos':0.48, 'Outras Renováveis':12.72, 'Cogeração Renovável':0.13, 'Hídrica':30.89, 'Eólica':16.65} },
   '2024-12': { rede_kwh:700, custo_sem_iva:181.28, total_com_iva:226.94, taxas_impostos:45.66, preco_kwh:0.2323, mix_energetico:{'Nuclear':10.22, 'Carvão':0.55, 'Gás Natural':25.31, 'Cogeração Fóssil':3.04, 'Resíduos Sólidos Urbanos':0.48, 'Outras Renováveis':12.72, 'Cogeração Renovável':0.13, 'Hídrica':30.89, 'Eólica':16.65} },
   '2025-01': { rede_kwh:913, custo_sem_iva:209.01, total_com_iva:261.31, taxas_impostos:52.3, preco_kwh:0.2323, mix_energetico:{'Nuclear':10.22, 'Carvão':0.55, 'Gás Natural':25.31, 'Cogeração Fóssil':3.04, 'Resíduos Sólidos Urbanos':0.48, 'Outras Renováveis':12.72, 'Cogeração Renovável':0.13, 'Hídrica':30.89, 'Eólica':16.65} },
@@ -542,7 +555,10 @@ const FATURAS_EDP_HARDCODED = {
   '2026-04': { rede_kwh:401, custo_sem_iva:95.57, total_com_iva:121.15, taxas_impostos:25.58, preco_kwh:0.1827, mix_energetico:{'Nuclear':9.86, 'Carvão':0.27, 'Gás Natural':41.72, 'Cogeração Fóssil':2.93, 'Resíduos Sólidos Urbanos':1.03, 'Outras Renováveis':11.27, 'Cogeração Renovável':0.11, 'Hídrica':20.19, 'Eólica':12.62} },
   '2026-05': { rede_kwh:290, custo_sem_iva:74.93, total_com_iva:95.63, taxas_impostos:20.7, preco_kwh:0.1827, mix_energetico:{'Nuclear':9.86, 'Carvão':0.27, 'Gás Natural':41.72, 'Cogeração Fóssil':2.93, 'Resíduos Sólidos Urbanos':1.03, 'Outras Renováveis':11.27, 'Cogeração Renovável':0.11, 'Hídrica':20.19, 'Eólica':12.62} },
   '2026-06': { rede_kwh:247, custo_sem_iva:68.01, total_com_iva:87.07, taxas_impostos:19.06, preco_kwh:0.1827, mix_energetico:{'Nuclear':7.21, 'Carvão':0.1, 'Gás Natural':46.23, 'Cogeração Fóssil':2.02, 'Resíduos Sólidos Urbanos':0.14, 'Outras Renováveis':10.07, 'Cogeração Renovável':0.08, 'Hídrica':23.64, 'Eólica':10.5} },
-}
+  '2026-07': { rede_kwh:194, custo_sem_iva:57.74, total_com_iva:74.36, taxas_impostos:16.62, preco_kwh:0.1827, mix_energetico:{'Nuclear':7.21, 'Carvão':0.1, 'Gás Natural':46.23, 'Cogeração Fóssil':2.02, 'Resíduos Sólidos Urbanos':0.14, 'Outras Renováveis':10.07, 'Cogeração Renovável':0.08, 'Hídrica':23.64, 'Eólica':10.5} },
+  '2026-08': { rede_kwh:303, custo_sem_iva:78.03, total_com_iva:99.45, taxas_impostos:21.42, preco_kwh:0.1827, mix_energetico:{'Nuclear':7.21, 'Carvão':0.1, 'Gás Natural':46.23, 'Cogeração Fóssil':2.02, 'Resíduos Sólidos Urbanos':0.14, 'Outras Renováveis':10.07, 'Cogeração Renovável':0.08, 'Hídrica':23.64, 'Eólica':10.5} },
+  '2026-11': { rede_kwh:621, custo_sem_iva:134.97, total_com_iva:169.88, taxas_impostos:34.91, preco_kwh:0.1827, mix_energetico:{'Nuclear':10.89, 'Carvão':0.07, 'Gás Natural':45.66, 'Cogeração Fóssil':3.89, 'Resíduos Sólidos Urbanos':0.2, 'Outras Renováveis':8.4, 'Cogeração Renovável':6.95, 'Hídrica':14.67, 'Eólica':9.27} },
+};;
 
 function carregarFaturasHardcoded() {
   Object.entries(FATURAS_EDP_HARDCODED).forEach(([mes, d]) => {
@@ -554,54 +570,66 @@ carregarFaturasHardcoded();
 
 // ─── Dados FusionSolar já processados (produção solar, autoconsumo, bateria) ───
 const SOLAR_HARDCODED = {
-  '2022-08': { solar_kwh:1013.73, autoconsumo_kwh:557.24, autoconsumo_pct:58.79, exportacao:456.49, bat_carga:392.36, bat_descarga:382.36 },
-  '2022-09': { solar_kwh:625.29, autoconsumo_kwh:625.24, autoconsumo_pct:99.99, exportacao:0.05, bat_carga:529.48, bat_descarga:533.76 },
-  '2022-10': { solar_kwh:559.38, autoconsumo_kwh:559.35, autoconsumo_pct:100.0, exportacao:0.03, bat_carga:457.84, bat_descarga:452.08 },
-  '2022-11': { solar_kwh:450.45, autoconsumo_kwh:450.41, autoconsumo_pct:99.99, exportacao:0.04, bat_carga:258.9, bat_descarga:255.1 },
-  '2022-12': { solar_kwh:303.57, autoconsumo_kwh:303.57, autoconsumo_pct:100.0, exportacao:0, bat_carga:110.9, bat_descarga:106.88 },
-  '2023-01': { solar_kwh:568.82, autoconsumo_kwh:568.82, autoconsumo_pct:100.0, exportacao:0, bat_carga:166.94, bat_descarga:163.24 },
-  '2023-02': { solar_kwh:583.29, autoconsumo_kwh:583.29, autoconsumo_pct:100.0, exportacao:0, bat_carga:195.27, bat_descarga:191.02 },
-  '2023-03': { solar_kwh:754.68, autoconsumo_kwh:676.42, autoconsumo_pct:92.42, exportacao:78.26, bat_carga:240.29, bat_descarga:232.48 },
-  '2023-04': { solar_kwh:1104.98, autoconsumo_kwh:652.84, autoconsumo_pct:61.87, exportacao:452.14, bat_carga:504.62, bat_descarga:496.2 },
-  '2023-05': { solar_kwh:1183.1, autoconsumo_kwh:659.35, autoconsumo_pct:57.63, exportacao:523.75, bat_carga:496.82, bat_descarga:486.72 },
-  '2023-06': { solar_kwh:839.93, autoconsumo_kwh:659.63, autoconsumo_pct:84.83, exportacao:180.3, bat_carga:497.5, bat_descarga:478.5 },
-  '2023-07': { solar_kwh:618.16, autoconsumo_kwh:618.11, autoconsumo_pct:99.99, exportacao:0.05, bat_carga:454.0, bat_descarga:437.78 },
-  '2023-08': { solar_kwh:571.01, autoconsumo_kwh:571.01, autoconsumo_pct:100.0, exportacao:0, bat_carga:448.9, bat_descarga:449.66 },
-  '2023-09': { solar_kwh:586.21, autoconsumo_kwh:586.17, autoconsumo_pct:99.99, exportacao:0.04, bat_carga:531.08, bat_descarga:512.62 },
-  '2023-10': { solar_kwh:450.34, autoconsumo_kwh:450.33, autoconsumo_pct:100.0, exportacao:0.01, bat_carga:399.6, bat_descarga:395.74 },
-  '2023-11': { solar_kwh:435.5, autoconsumo_kwh:435.49, autoconsumo_pct:100.0, exportacao:0.01, bat_carga:314.36, bat_descarga:309.34 },
-  '2023-12': { solar_kwh:440.52, autoconsumo_kwh:440.5, autoconsumo_pct:100.0, exportacao:0.02, bat_carga:194.86, bat_descarga:189.4 },
-  '2024-01': { solar_kwh:451.29, autoconsumo_kwh:451.29, autoconsumo_pct:100.0, exportacao:0, bat_carga:80.94, bat_descarga:78.45 },
-  '2024-02': { solar_kwh:588.21, autoconsumo_kwh:588.21, autoconsumo_pct:100.0, exportacao:0, bat_carga:143.56, bat_descarga:139.46 },
-  '2024-03': { solar_kwh:697.92, autoconsumo_kwh:697.89, autoconsumo_pct:99.99, exportacao:0.03, bat_carga:185.57, bat_descarga:182.56 },
-  '2024-04': { solar_kwh:758.54, autoconsumo_kwh:758.5, autoconsumo_pct:100.0, exportacao:0.04, bat_carga:548.22, bat_descarga:530.14 },
-  '2024-05': { solar_kwh:671.17, autoconsumo_kwh:671.13, autoconsumo_pct:99.99, exportacao:0.04, bat_carga:488.14, bat_descarga:475.72 },
-  '2024-06': { solar_kwh:635.09, autoconsumo_kwh:635.04, autoconsumo_pct:99.99, exportacao:0.05, bat_carga:446.5, bat_descarga:434.64 },
-  '2024-07': { solar_kwh:771.13, autoconsumo_kwh:771.08, autoconsumo_pct:99.99, exportacao:0.05, bat_carga:524.62, bat_descarga:517.18 },
-  '2024-08': { solar_kwh:609.84, autoconsumo_kwh:609.82, autoconsumo_pct:100.0, exportacao:0.02, bat_carga:384.4, bat_descarga:369.34 },
-  '2024-09': { solar_kwh:662.73, autoconsumo_kwh:662.66, autoconsumo_pct:99.99, exportacao:0.07, bat_carga:476.1, bat_descarga:477.36 },
-  '2024-10': { solar_kwh:539.28, autoconsumo_kwh:539.26, autoconsumo_pct:100.0, exportacao:0.02, bat_carga:397.88, bat_descarga:395.02 },
-  '2024-11': { solar_kwh:467.58, autoconsumo_kwh:467.57, autoconsumo_pct:100.0, exportacao:0.01, bat_carga:223.78, bat_descarga:212.44 },
-  '2024-12': { solar_kwh:540.32, autoconsumo_kwh:540.31, autoconsumo_pct:100.0, exportacao:0.01, bat_carga:203.8, bat_descarga:204.66 },
-  '2025-01': { solar_kwh:824.2, autoconsumo_kwh:824.16, autoconsumo_pct:100.0, exportacao:0.04, bat_carga:107.56, bat_descarga:104.69 },
-  '2025-02': { solar_kwh:1005.72, autoconsumo_kwh:1005.68, autoconsumo_pct:100.0, exportacao:0.04, bat_carga:106.14, bat_descarga:103.63 },
-  '2025-03': { solar_kwh:1177.44, autoconsumo_kwh:1177.38, autoconsumo_pct:100.0, exportacao:0.06, bat_carga:167.13, bat_descarga:158.15 },
-  '2025-04': { solar_kwh:1387.98, autoconsumo_kwh:1387.9, autoconsumo_pct:99.99, exportacao:0.08, bat_carga:470.48, bat_descarga:458.48 },
-  '2025-05': { solar_kwh:1671.96, autoconsumo_kwh:1671.9, autoconsumo_pct:100.0, exportacao:0.06, bat_carga:519.1, bat_descarga:513.46 },
-  '2025-06': { solar_kwh:1392.54, autoconsumo_kwh:1392.42, autoconsumo_pct:99.99, exportacao:0.12, bat_carga:444.4, bat_descarga:426.46 },
-  '2025-07': { solar_kwh:1317.92, autoconsumo_kwh:1317.86, autoconsumo_pct:99.99, exportacao:0.06, bat_carga:396.8, bat_descarga:392.44 },
-  '2025-08': { solar_kwh:1272.8, autoconsumo_kwh:1272.76, autoconsumo_pct:100.0, exportacao:0.04, bat_carga:388.28, bat_descarga:377.4 },
-  '2025-09': { solar_kwh:1384.26, autoconsumo_kwh:1384.24, autoconsumo_pct:100.0, exportacao:0.02, bat_carga:452.46, bat_descarga:446.5 },
-  '2025-10': { solar_kwh:1244.24, autoconsumo_kwh:1244.2, autoconsumo_pct:100.0, exportacao:0.04, bat_carga:329.88, bat_descarga:333.4 },
-  '2025-11': { solar_kwh:938.36, autoconsumo_kwh:938.04, autoconsumo_pct:99.97, exportacao:0.32, bat_carga:283.0, bat_descarga:275.3 },
-  '2025-12': { solar_kwh:795.78, autoconsumo_kwh:795.66, autoconsumo_pct:99.99, exportacao:0.12, bat_carga:237.94, bat_descarga:230.8 },
-  '2026-01': { solar_kwh:692.76, autoconsumo_kwh:692.62, autoconsumo_pct:99.99, exportacao:0.14, bat_carga:105.36, bat_descarga:102.0 },
-  '2026-02': { solar_kwh:875.54, autoconsumo_kwh:875.26, autoconsumo_pct:99.97, exportacao:0.28, bat_carga:113.27, bat_descarga:104.73 },
-  '2026-03': { solar_kwh:1520.04, autoconsumo_kwh:1519.5, autoconsumo_pct:99.97, exportacao:0.54, bat_carga:184.36, bat_descarga:183.91 },
-  '2026-04': { solar_kwh:1589.78, autoconsumo_kwh:1589.56, autoconsumo_pct:99.99, exportacao:0.22, bat_carga:487.3, bat_descarga:470.1 },
-  '2026-05': { solar_kwh:1681.68, autoconsumo_kwh:1681.46, autoconsumo_pct:99.99, exportacao:0.22, bat_carga:526.76, bat_descarga:527.52 },
-  '2026-06': { solar_kwh:1413.8, autoconsumo_kwh:1413.64, autoconsumo_pct:99.99, exportacao:0.16, bat_carga:401.88, bat_descarga:389.25 },
-};
+  '2022-08': { solar_kwh:4054.920000000001, autoconsumo_kwh:2228.96, autoconsumo_pct:58.788379310344816, exportacao:1825.9600000000003, bat_carga:784.7199999999999, bat_descarga:764.7199999999997 },
+  '2022-09': { solar_kwh:2501.159999999999, autoconsumo_kwh:2500.9599999999996, autoconsumo_pct:99.99269999999999, exportacao:0.19999999999999998, bat_carga:1058.96, bat_descarga:1067.5199999999995 },
+  '2022-10': { solar_kwh:2237.5200000000013, autoconsumo_kwh:2237.4000000000015, autoconsumo_pct:99.99587096774195, exportacao:0.12, bat_carga:915.68, bat_descarga:904.1600000000002 },
+  '2022-11': { solar_kwh:1801.7999999999997, autoconsumo_kwh:1801.6399999999999, autoconsumo_pct:99.99336666666667, exportacao:0.16, bat_carga:517.8000000000002, bat_descarga:510.20000000000005 },
+  '2022-12': { solar_kwh:1214.28, autoconsumo_kwh:1214.28, autoconsumo_pct:100, exportacao:0, bat_carga:221.80000000000004, bat_descarga:213.75999999999996 },
+  '2023-01': { solar_kwh:2275.2799999999997, autoconsumo_kwh:2275.2799999999997, autoconsumo_pct:100, exportacao:0, bat_carga:166.94, bat_descarga:163.24 },
+  '2023-02': { solar_kwh:2333.1600000000003, autoconsumo_kwh:2333.1600000000003, autoconsumo_pct:100, exportacao:0, bat_carga:195.27, bat_descarga:191.02 },
+  '2023-03': { solar_kwh:3018.719999999999, autoconsumo_kwh:2705.68, autoconsumo_pct:92.41732258064519, exportacao:313.0400000000001, bat_carga:240.29, bat_descarga:232.48 },
+  '2023-04': { solar_kwh:4419.920000000003, autoconsumo_kwh:2611.359999999999, autoconsumo_pct:61.874066666666636, exportacao:1808.56, bat_carga:1009.2399999999998, bat_descarga:992.4 },
+  '2023-05': { solar_kwh:4732.400000000002, autoconsumo_kwh:2637.3999999999996, autoconsumo_pct:57.62687096774194, exportacao:2094.999999999999, bat_carga:993.6400000000002, bat_descarga:973.4400000000006 },
+  '2023-06': { solar_kwh:3359.72, autoconsumo_kwh:2638.52, autoconsumo_pct:84.82583333333334, exportacao:721.1999999999998, bat_carga:995.0000000000003, bat_descarga:957.0000000000003 },
+  '2023-07': { solar_kwh:2472.640000000001, autoconsumo_kwh:2472.440000000001, autoconsumo_pct:99.99303225806455, exportacao:0.2, bat_carga:907.9999999999993, bat_descarga:875.5599999999993 },
+  '2023-08': { solar_kwh:2284.0399999999995, autoconsumo_kwh:2284.0399999999995, autoconsumo_pct:100, exportacao:0, bat_carga:897.8000000000004, bat_descarga:899.3200000000002 },
+  '2023-09': { solar_kwh:2344.84, autoconsumo_kwh:2344.68, autoconsumo_pct:99.9939, exportacao:0.16, bat_carga:1062.1599999999999, bat_descarga:1025.2399999999996 },
+  '2023-10': { solar_kwh:1801.3599999999994, autoconsumo_kwh:1801.3199999999995, autoconsumo_pct:99.99722580645161, exportacao:0.04, bat_carga:799.1999999999998, bat_descarga:791.4799999999996 },
+  '2023-11': { solar_kwh:1742.0000000000002, autoconsumo_kwh:1741.9600000000003, autoconsumo_pct:99.99866666666668, exportacao:0.04, bat_carga:628.7199999999999, bat_descarga:618.68 },
+  '2023-12': { solar_kwh:1762.0800000000006, autoconsumo_kwh:1762.0000000000007, autoconsumo_pct:99.99696774193549, exportacao:0.08, bat_carga:389.72000000000014, bat_descarga:378.80000000000035 },
+  '2024-01': { solar_kwh:1805.1599999999994, autoconsumo_kwh:1805.1599999999994, autoconsumo_pct:100, exportacao:0, bat_carga:80.94, bat_descarga:78.45 },
+  '2024-02': { solar_kwh:2352.8399999999997, autoconsumo_kwh:2352.8399999999997, autoconsumo_pct:100, exportacao:0, bat_carga:143.56, bat_descarga:139.46 },
+  '2024-03': { solar_kwh:2791.680000000001, autoconsumo_kwh:2791.560000000001, autoconsumo_pct:99.99448387096771, exportacao:0.12, bat_carga:185.57, bat_descarga:182.56 },
+  '2024-04': { solar_kwh:3034.160000000002, autoconsumo_kwh:3034.000000000002, autoconsumo_pct:99.9951, exportacao:0.16, bat_carga:1096.4400000000005, bat_descarga:1060.2800000000009 },
+  '2024-05': { solar_kwh:2684.680000000002, autoconsumo_kwh:2684.5200000000013, autoconsumo_pct:99.99332258064517, exportacao:0.16, bat_carga:976.2800000000004, bat_descarga:951.4400000000007 },
+  '2024-06': { solar_kwh:2540.3600000000015, autoconsumo_kwh:2540.1600000000017, autoconsumo_pct:99.98630000000001, exportacao:0.2, bat_carga:893.0000000000002, bat_descarga:869.2799999999999 },
+  '2024-07': { solar_kwh:3084.5199999999995, autoconsumo_kwh:3084.3199999999993, autoconsumo_pct:99.9927741935484, exportacao:0.20000000000000004, bat_carga:1049.2400000000005, bat_descarga:1034.3600000000001 },
+  '2024-08': { solar_kwh:2439.3600000000006, autoconsumo_kwh:2439.280000000001, autoconsumo_pct:99.99761290322579, exportacao:0.08, bat_carga:768.8000000000001, bat_descarga:738.6799999999998 },
+  '2024-09': { solar_kwh:2650.9199999999996, autoconsumo_kwh:2650.64, autoconsumo_pct:99.98886666666667, exportacao:0.2800000000000001, bat_carga:952.2000000000003, bat_descarga:954.7199999999995 },
+  '2024-10': { solar_kwh:2157.120000000001, autoconsumo_kwh:2157.040000000001, autoconsumo_pct:99.99574193548388, exportacao:0.08, bat_carga:795.7599999999999, bat_descarga:790.0399999999997 },
+  '2024-11': { solar_kwh:1870.3199999999993, autoconsumo_kwh:1870.2799999999993, autoconsumo_pct:99.99836666666666, exportacao:0.04, bat_carga:447.56, bat_descarga:424.87999999999994 },
+  '2024-12': { solar_kwh:2161.2800000000007, autoconsumo_kwh:2161.2400000000002, autoconsumo_pct:99.99848387096773, exportacao:0.04, bat_carga:407.60000000000025, bat_descarga:409.32000000000005 },
+  '2025-01': { solar_kwh:2060.5000000000014, autoconsumo_kwh:2060.4000000000015, autoconsumo_pct:99.99677419354839, exportacao:0.09999999999999999, bat_carga:107.56, bat_descarga:104.69 },
+  '2025-02': { solar_kwh:2514.2999999999997, autoconsumo_kwh:2514.2, autoconsumo_pct:99.99589285714286, exportacao:0.09999999999999999, bat_carga:106.14, bat_descarga:103.63 },
+  '2025-03': { solar_kwh:2943.599999999999, autoconsumo_kwh:2943.4499999999994, autoconsumo_pct:99.9965806451613, exportacao:0.15, bat_carga:167.13, bat_descarga:158.15 },
+  '2025-04': { solar_kwh:3469.950000000002, autoconsumo_kwh:3469.7500000000023, autoconsumo_pct:99.99463333333335, exportacao:0.20000000000000004, bat_carga:940.9599999999989, bat_descarga:916.9599999999998 },
+  '2025-05': { solar_kwh:4179.900000000001, autoconsumo_kwh:4179.75, autoconsumo_pct:99.99654838709678, exportacao:0.15, bat_carga:1038.2000000000003, bat_descarga:1026.92 },
+  '2025-06': { solar_kwh:3481.3500000000017, autoconsumo_kwh:3481.050000000002, autoconsumo_pct:99.99219999999998, exportacao:0.3000000000000001, bat_carga:888.8000000000002, bat_descarga:852.9199999999998 },
+  '2025-07': { solar_kwh:3294.7999999999993, autoconsumo_kwh:3294.6499999999996, autoconsumo_pct:99.99490322580645, exportacao:0.15, bat_carga:793.6000000000005, bat_descarga:784.8799999999999 },
+  '2025-08': { solar_kwh:3182.0000000000005, autoconsumo_kwh:3181.9000000000005, autoconsumo_pct:99.99816129032257, exportacao:0.09999999999999999, bat_carga:776.5599999999997, bat_descarga:754.8000000000002 },
+  '2025-09': { solar_kwh:3460.650000000003, autoconsumo_kwh:3460.6000000000026, autoconsumo_pct:99.99826666666668, exportacao:0.05, bat_carga:904.9199999999995, bat_descarga:893.0000000000001 },
+  '2025-10': { solar_kwh:3110.600000000001, autoconsumo_kwh:3110.500000000001, autoconsumo_pct:99.99738709677419, exportacao:0.09999999999999999, bat_carga:659.7599999999998, bat_descarga:666.7999999999994 },
+  '2025-11': { solar_kwh:2345.8999999999996, autoconsumo_kwh:2345.1000000000004, autoconsumo_pct:99.9733, exportacao:0.8000000000000004, bat_carga:566, bat_descarga:550.6000000000001 },
+  '2025-12': { solar_kwh:1989.4499999999996, autoconsumo_kwh:1989.1499999999996, autoconsumo_pct:99.98770967741936, exportacao:0.30000000000000016, bat_carga:475.87999999999994, bat_descarga:461.59999999999985 },
+  '2026-01': { solar_kwh:1731.8999999999994, autoconsumo_kwh:1731.5499999999995, autoconsumo_pct:99.98664516129033, exportacao:0.35000000000000014, bat_carga:105.36, bat_descarga:102 },
+  '2026-02': { solar_kwh:2188.85, autoconsumo_kwh:2188.15, autoconsumo_pct:99.96928571428569, exportacao:0.7000000000000004, bat_carga:113.27, bat_descarga:104.73 },
+  '2026-03': { solar_kwh:3800.1000000000013, autoconsumo_kwh:3798.7499999999995, autoconsumo_pct:99.96845161290321, exportacao:1.3500000000000008, bat_carga:184.36, bat_descarga:183.91 },
+  '2026-04': { solar_kwh:3974.4499999999966, autoconsumo_kwh:3973.8999999999996, autoconsumo_pct:99.98630000000001, exportacao:0.5500000000000003, bat_carga:974.5999999999993, bat_descarga:940.2 },
+  '2026-05': { solar_kwh:4204.200000000003, autoconsumo_kwh:4203.649999999999, autoconsumo_pct:99.98790322580648, exportacao:0.5500000000000003, bat_carga:1053.5199999999998, bat_descarga:1055.0400000000002 },
+  '2026-06': { solar_kwh:3534.500000000001, autoconsumo_kwh:3534.1000000000004, autoconsumo_pct:99.98836666666668, exportacao:0.4000000000000002, bat_carga:802.2800000000002, bat_descarga:778.4299999999998 },
+  '2026-07': { solar_kwh:2433.089999999999, autoconsumo_kwh:2432.909999999999, autoconsumo_pct:99.99280645161292, exportacao:0.18, bat_carga:748.59, bat_descarga:711.3299999999998 },
+  '2026-08': { solar_kwh:1893.0600000000002, autoconsumo_kwh:1892.9999999999998, autoconsumo_pct:99.99632258064516, exportacao:0.060000000000000005, bat_carga:574.1100000000001, bat_descarga:565.4099999999999 },
+  '2026-09': { solar_kwh:2272.92, autoconsumo_kwh:2272.7700000000004, autoconsumo_pct:99.99443333333333, exportacao:0.15, bat_carga:683.0099999999999, bat_descarga:680.8500000000001 },
+  '2026-10': { solar_kwh:2267.819999999999, autoconsumo_kwh:2267.4899999999993, autoconsumo_pct:99.98483870967742, exportacao:0.3300000000000001, bat_carga:699.2099999999998, bat_descarga:696.6899999999997 },
+};;
+
+function carregarSolarHardcoded() {
+  Object.entries(SOLAR_HARDCODED).forEach(([mes, d]) => {
+    if (!dados[mes]) dados[mes] = {};
+    Object.assign(dados[mes], d);
+  });
+}
+carregarSolarHardcoded();;
 
 function carregarSolarHardcoded() {
   Object.entries(SOLAR_HARDCODED).forEach(([mes, d]) => {
@@ -761,6 +789,96 @@ async function parseEdpPdf(file) {
   if (precoM) merge(mes, 'preco_kwh', parseFloat(precoM[1].replace(',','.')));
 
   msg('Fatura EDP lida: ' + mes, 'ok');
+}
+
+// ─── Importar de pasta (File System Access API) ──────────────────
+async function selecionarPasta() {
+  if (!window.showDirectoryPicker) {
+    msg('O seu browser não suporta acesso a pastas. Use o Chrome ou Edge.', 'err');
+    return;
+  }
+  const log = document.getElementById('pastaLog');
+  const btn = document.getElementById('btnPasta');
+  log.style.display = 'block';
+  log.innerHTML = '⏳ A selecionar pasta…';
+  btn.disabled = true;
+
+  try {
+    const dirHandle = await window.showDirectoryPicker({ mode: 'read' });
+
+    const arquivosSolar = [];
+    const arquivosEdp   = [];
+    let totalFichs = 0;
+
+    async function lerDiretoria(handle, caminho) {
+      for await (const entry of handle.values()) {
+        const nome = entry.name;
+        const nomeLower = nome.toLowerCase();
+        if (entry.kind === 'file') {
+          totalFichs++;
+          if (nomeLower.endsWith('.xlsx') || nomeLower.endsWith('.xls')) {
+            // FusionSolar Excel: relatório de instalação ou de armazenamento
+            if (nomeLower.includes('relat') || nomeLower.includes('instalação') ||
+                nomeLower.includes('instalacao') || nomeLower.includes('armazenamento') ||
+                nomeLower.includes('fusionsolar')) {
+              arquivosSolar.push(await entry.getFile());
+            }
+          } else if (nomeLower.endsWith('.pdf') ||
+                     nomeLower.endsWith('.png') || nomeLower.endsWith('.jpg') || nomeLower.endsWith('.jpeg')) {
+            // Faturas EDP (PDF ou imagem de fatura)
+            arquivosEdp.push(await entry.getFile());
+          }
+        } else if (entry.kind === 'directory') {
+          log.innerHTML = `⏳ A ler: ${caminho}/${nome}…`;
+          await lerDiretoria(entry, caminho + '/' + nome);
+        }
+      }
+    }
+
+    log.innerHTML = '⏳ A varrer ficheiros…';
+    await lerDiretoria(dirHandle, dirHandle.name);
+
+    const linhas = [`📂 Pasta: <strong>${dirHandle.name}</strong>`,
+                    `Ficheiros encontrados: ${totalFichs}`,
+                    `☀️ FusionSolar (Excel): ${arquivosSolar.length}`,
+                    `🧾 Faturas EDP: ${arquivosEdp.length}`];
+
+    if (arquivosSolar.length === 0 && arquivosEdp.length === 0) {
+      linhas.push('<span style="color:#c00">Nenhum ficheiro reconhecido. Verifica se a pasta contém ficheiros Excel do FusionSolar ou faturas PDF.</span>');
+      log.innerHTML = linhas.join('<br>');
+      btn.disabled = false;
+      return;
+    }
+
+    log.innerHTML = linhas.join('<br>') + '<br>⏳ A processar…';
+
+    let erros = 0;
+    if (arquivosSolar.length > 0) {
+      for (const f of arquivosSolar) {
+        try { await parseSolarXlsx(f); }
+        catch(e) { erros++; console.warn('Erro solar', f.name, e); }
+      }
+      document.getElementById('badgeSolar').textContent =
+        arquivosSolar.length + ' ficheiro' + (arquivosSolar.length !== 1 ? 's' : '');
+    }
+    if (arquivosEdp.length > 0) {
+      await processEdpFiles(arquivosEdp);
+    }
+
+    render();
+    log.innerHTML = linhas.join('<br>') +
+      `<br>✅ Importação concluída${erros > 0 ? ' (' + erros + ' erros)' : ''}`;
+    msg('Pasta importada com sucesso!', 'ok');
+
+  } catch(err) {
+    if (err.name === 'AbortError') {
+      log.innerHTML = 'Cancelado.';
+    } else {
+      log.innerHTML = '❌ Erro: ' + err.message;
+      msg('Erro ao ler pasta: ' + err.message, 'err');
+    }
+  }
+  btn.disabled = false;
 }
 
 // ─── Excel FusionSolar ───────────────────────────────────────────
